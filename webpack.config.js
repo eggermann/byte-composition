@@ -78,6 +78,14 @@ module.exports = {
           options: { importLoaders: 1 }
         }
       ]
+    },
+    { // Add SCSS rule
+      test: /\.scss$/,
+      use: [
+        'style-loader', // Injects styles into DOM
+        'css-loader',   // Translates CSS into CommonJS
+        'sass-loader'   // Compiles Sass to CSS
+      ]
     }]
   },
 }

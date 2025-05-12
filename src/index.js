@@ -16,9 +16,15 @@ import './styles.css';
 const prefetchedSamplesSize = 2;
 const PROCESSOR_COUNT = 3;
 const audioContext = new getContext().rawContext;
+let isInitialized = false;
+let isPlaying = false;
 
 const _ = {
     audioContext,
+    processors: {}, // Initialize processors object
+    mixer: {},      // Initialize mixer object
+    compressors: {}, // Initialize compressors object
+    prefetchedSamples: {}, // Initialize prefetchedSamples object
 
     async decodeAndResampleAudio(arrayBuffer, targetSampleRate = 44100) {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)({
@@ -88,41 +94,24 @@ const _ = {
     },
 };
 
-async function startAudio() {
-    let s1, s2;
-    const loadRandomSample = false;
+// --- Initialization Function ---
+async function initializeAudio() {
+    if (isInitialized) return; // Prevent re-initialization
 
-    // Load or fetch your samples
-    if (loadRandomSample) {
-        const sample1 = await freeSoundClient.getRandomSample();
-        const sample2 = await freeSoundClient.getRandomSample();
-        s1 = await _.loadSample(null, sample1.previews["preview-hq-mp3"]);
-        s2 = await _.loadSample(null, sample2.previews["preview-hq-mp3"]);
-    } else {
-        s1 = await _.loadSample(Ab5Sample);
-        s2 = s1;
-    }
-
-    console.log("s1, s2", s1, s2);
-
+    console.log("Initializing audio system...");
     try {
-        // Setup
-        _.mixer = {};
-        _.compressors = {};
-        _.processors = {};
-        _.prefetchedSamples = {};
-
         // Add the audio worklet modules
         await audioContext.audioWorklet.addModule(byteStepProcessor);
 
-        // Create main "master" gain (or you can skip if you already have a final node)
+        // Create main "master" gain
         const masterGain = audioContext.createGain();
         masterGain.gain.value = 1.0;
 
         // Create a master analyzer for the spectrogram
         const masterAnalyser = audioContext.createAnalyser();
-        masterAnalyser.fftSize = 1024; // or 2048 for more detail
+        masterAnalyser.fftSize = 1024;
 
+        // Setup processors, mixers, compressors
         for (let i = 1; i <= PROCESSOR_COUNT; i++) {
             const procId = `proc${i}`;
 
@@ -139,10 +128,10 @@ async function startAudio() {
             _.compressors[procId] = compressor;
 
             _.processors[procId] = new AudioWorkletNode(audioContext, `byte-step-processor-${i}`);
-            _.prefetchedSamples[procId] = [];
+            _.prefetchedSamples[procId] = []; // Initialize prefetched samples array
 
-            // Connect each processor chain
-            if (i === 2) {
+            // Connect processor chain
+            if (i === 2) { // Example: Add delay to proc2
                 const delay = audioContext.createDelay();
                 delay.delayTime.value = 0.15;
                 _.processors[procId].connect(delay);
@@ -153,100 +142,181 @@ async function startAudio() {
 
             _.mixer[procId].gain.connect(compressor);
             compressor.connect(_.mixer[procId].analyzer);
-            // Now connect each channel's analyzer to the masterGain
-            _.mixer[procId].analyzer.connect(masterGain);
+            _.mixer[procId].analyzer.connect(masterGain); // Connect channel analyzer to master gain
         }
 
-        // Finally connect the masterGain to the masterAnalyser, and then to the destination
+        // Connect master gain to master analyzer and destination
         masterGain.connect(masterAnalyser);
         masterAnalyser.connect(audioContext.destination);
 
-        // OPTIONAL: Start the spectrogram (toggle with a boolean if you want).
-        const spectroEnabled = true; // or false if you want to disable
+        // Initialize the visualizer
+        const spectroEnabled = true;
         initSpectroVisualizer3D(masterAnalyser, { width: 600, height: 256, enabled: spectroEnabled });
 
-        // Monitor and adjust levels every 40ms
+        // Setup message handling for processors
+        const handleProcessorMessage = (processorId) => async (event) => {
+             const data = event.data;
+             let procId = processorId.startsWith("proc") ? processorId : `proc${processorId.split("-").pop()}`;
+
+             console.log(`Received message from ${procId}:`, data.type);
+
+             if (data.type === "deliverNewSample") {
+                 console.log(`${procId}: Received request for new sample, prefetching...`);
+
+                 if (!_.prefetchedSamples[procId]) _.prefetchedSamples[procId] = [];
+
+                 const addSamplesToWorklet = () => {
+                     const samples = _.prefetchedSamples[procId];
+                     if (samples && samples.length >= 2) {
+                         _.addBufferToWorklet(samples.shift(), 0, procId);
+                         _.addBufferToWorklet(samples.shift(), 1, procId);
+                     } else {
+                         console.warn(`${procId}: Not enough prefetched samples to deliver.`);
+                     }
+                 };
+
+                 // Check if enough samples are ready, otherwise wait
+                 if (_.prefetchedSamples[procId] && _.prefetchedSamples[procId].length >= 2) {
+                     addSamplesToWorklet();
+                 } else {
+                     console.log(`${procId}: Waiting for prefetched samples...`);
+                     const checkSamples = setInterval(() => {
+                         if (_.prefetchedSamples[procId] && _.prefetchedSamples[procId].length >= 2) {
+                             clearInterval(checkSamples);
+                             addSamplesToWorklet();
+                         }
+                     }, 400); // Check every 400ms
+                 }
+             }
+        };
+
+        for (let i = 1; i <= PROCESSOR_COUNT; i++) {
+            const procId = `proc${i}`;
+            _.processors[procId].port.onmessage = handleProcessorMessage(procId);
+        }
+
+        // Start prefetching samples periodically
+        setInterval(async () => {
+            for (let i = 1; i <= PROCESSOR_COUNT; i++) {
+                const procId = `proc${i}`;
+                if (_.prefetchedSamples[procId].length < prefetchedSamplesSize) {
+                    console.log(`Prefetching a new sample for ${procId}...`);
+                    try {
+                        const sample = await freeSoundClient.getRandomSample();
+                        const newSample = await _.loadSample(null, sample.previews["preview-hq-mp3"]);
+                        _.prefetchedSamples[procId].push(newSample);
+                        console.log(`${procId}: Sample prefetched. Total: ${_.prefetchedSamples[procId].length}`);
+                    } catch (error) {
+                        console.error(`Error prefetching sample for ${procId}:`, error);
+                    }
+                }
+            }
+        }, 5000); // Prefetch every 5 seconds
+
+        // Start monitoring levels
         setInterval(() => {
             analyzeChannels(_.mixer, bufferHelpers);
             applyCorrections(_.mixer, _.compressors, audioContext, PROCESSOR_COUNT);
         }, 40);
+
+        isInitialized = true;
+        console.log("Audio system initialized successfully.");
+
     } catch (err) {
         console.error("Error during initialization:", err);
+        isInitialized = false; // Reset flag on error
         throw err;
-    }
-
-    // Handle processor messages
-    const handleProcessorMessage = (processorId) => async (event) => {
-        const data = event.data;
-        let procId = processorId.startsWith("proc") ? processorId : `proc${processorId.split("-").pop()}`;
-
-        console.log(`Received message from ${procId}:`, data.type);
-
-        if (data.type === "deliverNewSample") {
-            console.log(`${procId}: Received request for new sample, prefetching...`);
-
-            if (!_.prefetchedSamples[procId]) _.prefetchedSamples[procId] = [];
-
-            const addSamplesToWorklet = () => {
-                const samples = _.prefetchedSamples[procId];
-                if (samples && samples.length >= 2) {
-                    _.addBufferToWorklet(samples.shift(), 0, procId);
-                    _.addBufferToWorklet(samples.shift(), 1, procId);
-                }
-            };
-
-            if (_.prefetchedSamples[procId] && _.prefetchedSamples[procId].length >= 2) {
-                addSamplesToWorklet();
-            } else {
-                const checkSamples = setInterval(() => {
-                    if (_.prefetchedSamples[procId] && _.prefetchedSamples[procId].length >= 2) {
-                        clearInterval(checkSamples);
-                        addSamplesToWorklet();
-                    }
-                }, 400);
-            }
-        }
-    };
-
-    for (let i = 1; i <= PROCESSOR_COUNT; i++) {
-        const procId = `proc${i}`;
-        _.processors[procId].port.onmessage = handleProcessorMessage(procId);
-    }
-
-    // Prefetch samples
-    setInterval(async () => {
-        for (let i = 1; i <= PROCESSOR_COUNT; i++) {
-            const procId = `proc${i}`;
-            if (_.prefetchedSamples[procId].length < prefetchedSamplesSize) {
-                console.log(`Prefetching a new sample for ${procId}...`);
-                const sample = await freeSoundClient.getRandomSample();
-                const newSample = await _.loadSample(null, sample.previews["preview-hq-mp3"]);
-                _.prefetchedSamples[procId].push(newSample);
-            }
-        }
-    }, 5000);
-
-    try {
-        console.log("Resuming audio context...");
-        await audioContext.resume();
-        console.log("Audio context resumed");
-
-        // Start each processor
-        for (let i = 1; i <= PROCESSOR_COUNT; i++) {
-            const procId = `proc${i}`;
-            _.addBufferToWorklet(s1, 0, procId);
-            _.addBufferToWorklet(s2, 1, procId);
-            _.processors[procId].port.postMessage({ type: "start", processorId: procId });
-        }
-    } catch (error) {
-        console.error("Error in startAudio:", error);
-        throw error;
     }
 }
 
-// Create a button to start
+// --- Playback Toggle Function ---
+async function togglePlayback() {
+    if (!isInitialized) {
+        console.error("Audio system not initialized yet.");
+        return;
+    }
+
+    const button = document.querySelector('.start-button'); // Get the button reference
+
+    if (audioContext.state === 'suspended') {
+        try {
+            console.log("Resuming audio context...");
+            await audioContext.resume();
+            console.log("Audio context resumed.");
+            isPlaying = true;
+            if (button) button.innerHTML = "Pause";
+
+            // Send initial samples and start message ONLY if it's the first play
+            if (!_.processors['proc1']._started) { // Check a flag or state if processor has started
+                 console.log("Sending initial samples and start command...");
+                 // Load initial samples (assuming s1, s2 are needed globally or passed differently)
+                 // This part needs adjustment based on how s1, s2 are managed now
+                 let s1 = await _.loadSample(Ab5Sample); // Example: Load default sample
+                 let s2 = s1;
+
+                 for (let i = 1; i <= PROCESSOR_COUNT; i++) {
+                     const procId = `proc${i}`;
+                     _.addBufferToWorklet(s1, 0, procId);
+                     _.addBufferToWorklet(s2, 1, procId);
+                     _.processors[procId].port.postMessage({ type: "start", processorId: procId });
+                     _.processors[procId]._started = true; // Mark processor as started
+                 }
+            }
+
+        } catch (error) {
+            console.error("Error resuming audio context:", error);
+            isPlaying = false; // Revert state on error
+             if (button) button.innerHTML = "Play";
+        }
+    } else if (audioContext.state === 'running') {
+        try {
+            console.log("Suspending audio context...");
+            await audioContext.suspend();
+            console.log("Audio context suspended.");
+            isPlaying = false;
+            if (button) button.innerHTML = "Play";
+        } catch (error) {
+            console.error("Error suspending audio context:", error);
+            // isPlaying remains true if suspend fails? Or set to false? Decide based on desired behavior.
+        }
+    } else {
+        console.log(`Audio context state is: ${audioContext.state}`);
+    }
+}
+
+
+// --- Button Setup ---
 const button = document.createElement("button");
-button.innerHTML = "Start Audio Worklet";
+button.innerHTML = "Play"; // Initial text
 button.className = 'start-button';
-button.addEventListener("click", startAudio);
+
+async function handleButtonClick() {
+    button.disabled = true; // Disable button during async operations
+    button.innerHTML = "Loading...";
+    try {
+        if (!isInitialized) {
+            await initializeAudio();
+        }
+        // Ensure initialization is complete before toggling
+        if (isInitialized) {
+           await togglePlayback(); // Now toggle playback state
+        } else {
+           console.error("Initialization failed. Cannot toggle playback.");
+           button.innerHTML = "Error"; // Indicate error state
+           return; // Exit if initialization failed
+        }
+    } catch (error) {
+        console.error("Error during button click handling:", error);
+        button.innerHTML = "Error"; // Show error on button
+    } finally {
+       // Re-enable button only if not in error state? Or always?
+       if (button.innerHTML !== "Error") {
+           button.disabled = false;
+           // Update text based on final state after toggle attempt
+           button.innerHTML = isPlaying ? "Pause" : "Play";
+       }
+    }
+}
+
+button.addEventListener("click", handleButtonClick);
 document.body.appendChild(button);
