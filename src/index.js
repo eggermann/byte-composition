@@ -11,6 +11,7 @@ import { analysisData, analyzeChannels, applyCorrections } from "./analyzer.js";
 // Import our new spectrogram visualizer
 //import { initSpectroVisualizer3D } from "./spectroVisualizer.js";
 import { initSpectroVisualizer3D } from "./spectroVisualizer-exp.js";
+import './styles.css';
 
 const prefetchedSamplesSize = 2;
 const PROCESSOR_COUNT = 3;
@@ -246,7 +247,6 @@ async function startAudio() {
 // Create a button to start
 const button = document.createElement("button");
 button.innerHTML = "Start Audio Worklet";
-button.style.cssText =
-    "position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 10px 20px; font-size: 16px; cursor: pointer; z-index: 9000;";
+button.className = 'start-button';
 button.addEventListener("click", startAudio);
 document.body.appendChild(button);

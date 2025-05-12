@@ -20,7 +20,7 @@ module.exports = {
     globalObject: 'self'
   },
   resolve: {
-    extensions: ['.js', '.jsx', '.worklet.js'],
+    extensions: ['.js', '.jsx', '.worklet.js', '.scss'],
     fallback: {
       "os": false
     }
@@ -36,11 +36,6 @@ module.exports = {
       })
     })
   ],
-  resolve: {
-    fallback: {
-      "os": false
-    }
-  },
   devServer: {
     static: {
       directory: path.join(__dirname, 'dist')
@@ -67,6 +62,19 @@ module.exports = {
           options: {
             inline: false
           }
+        }
+      ]
+    },
+    {
+      test: /\.css$/,
+      use: [
+        {
+          loader: 'style-loader',
+          options: { injectType: 'styleTag' }
+        },
+        {
+          loader: 'css-loader',
+          options: { importLoaders: 1 }
         }
       ]
     }]
