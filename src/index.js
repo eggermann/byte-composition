@@ -245,6 +245,7 @@ async function togglePlayback() {
             console.log("Audio context resumed.");
             isPlaying = true;
             if (button) button.innerHTML = "Pause";
+            document.querySelector('#app h1')?.classList.add('playing'); // Add .playing class to h1
 
             // Send initial samples and start message ONLY if it's the first play
             if (!_.processors['proc1']._started) { // Check a flag or state if processor has started
@@ -275,6 +276,7 @@ async function togglePlayback() {
             console.log("Audio context suspended.");
             isPlaying = false;
             if (button) button.innerHTML = "Play";
+            document.querySelector('#app h1')?.classList.remove('playing'); // Remove .playing class from h1
         } catch (error) {
             console.error("Error suspending audio context:", error);
             // isPlaying remains true if suspend fails? Or set to false? Decide based on desired behavior.

@@ -46,9 +46,9 @@ module.exports = {
   },
   module: {
     rules: [{
-      test: /\.(js|jsx)$/,
-      exclude: /\.css$/, // Exclude CSS files from Babel processing
-      include: [path.resolve(__dirname, 'src'), path.resolve(__dirname, 'node_modules/tone')],
+      test: /\.jsx?$/, // More specific test for .js and .jsx files
+      // exclude: /\.css$/, // Remove exclude, rely on specific test
+      include: [path.resolve(__dirname, 'src'), path.resolve(__dirname, 'node_modules/tone')], // Keep include for src and tone
       loader: 'babel-loader'
     },
     {

@@ -41,6 +41,15 @@ canvas {
 }
 
 #app h1 {
-  color: #333;
+  color: #eee; /* Adjusted for dark background */
   margin-bottom: 30px;
+  font-family: Arial, Helvetica, sans-serif; /* Sans-serif font stack */
+  opacity: 1; /* Initial opacity */
+  transition: opacity 1.5s ease-out; /* Slow fade-out transition */
+  position: relative; /* For z-index if needed over canvas */
+  z-index: 10; /* Ensure title is above canvas if canvas z-index is 0 or positive */
+}
+
+#app h1.playing {
+  opacity: 0; /* Fade out when playing */
 }
