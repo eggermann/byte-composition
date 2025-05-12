@@ -29,8 +29,3 @@ yarn-error.log*
 *.suo
 *.ntvs*
 *.njsproj
-*.sln
-*.sw?
-
-# Generated audio worklet files
-*.worklet.js
