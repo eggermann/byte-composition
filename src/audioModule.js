@@ -1,7 +1,26 @@
-// audioModule.js
+/**
+ * @file audioModule.js
+ * @description Audio processing and management module for handling audio buffers, decoding, and worklet communication
+ *
+ * @module AudioModule
+ * @author eggman
+ * @created 2025
+ *
+ * @dependencies
+ * - prepareAudioBuffer.js: Provides buffer preparation utilities
+ *
+ * @exports {Object} audioModule
+ * @property {AudioContext} audioContext - Main audio context instance
+ * @property {Object} processors - Storage for AudioWorklet node references
+ *
+ * @functions
+ * - decodeAndResampleAudio(arrayBuffer, targetSampleRate): Decodes and resamples audio data
+ * - loadSample(url, previewUrl): Loads and decodes audio samples
+ * - addBufferToWorklet(buffer, index, processorId): Sends audio buffer to specified worklet
+ */
+
 import bufferHelpers from './prepareAudioBuffer.js';
 
-// Create and export the audio module object.
 const audioModule = {
   audioContext: null,
 

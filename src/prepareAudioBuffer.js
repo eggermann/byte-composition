@@ -1,3 +1,25 @@
+/**
+ * @file prepareAudioBuffer.js
+ * @description Audio buffer preparation and analysis utilities. Provides functions for
+ * loading, analyzing, and playing audio buffers with loudness measurements.
+ *
+ * @module AudioBufferUtils
+ * @author eggman
+ * @created 2025
+ *
+ * @exports {Object} default
+ * Methods:
+ * - analyzeLoudness(data): Computes RMS and peak values from audio data
+ * - getAudioBufferFromSample(url): Fetches and decodes audio from URL
+ * - playFromAudioBuffer(audioBuffer): Plays decoded audio buffer
+ *
+ * @algorithm
+ * Loudness Analysis:
+ * - RMS (Root Mean Square) calculation for average power
+ * - Peak detection for maximum amplitude
+ * - Non-blocking async audio loading and decoding
+ */
+
 const defaultFormat = {
     float: true,
     interleaved: false

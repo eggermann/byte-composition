@@ -1,3 +1,29 @@
+/**
+ * @file freesound-client.js
+ * @description Freesound.org API client for fetching and processing audio samples.
+ * Provides utilities for random sample selection, metadata retrieval, and audio buffer creation.
+ *
+ * @module FreesoundClient
+ * @author eggman
+ * @created 2025
+ *
+ * @requires window.ENV.FREESOUND_API_KEY
+ *
+ * @exports {Object} default
+ * Methods:
+ * - load(): Loads multiple random samples simultaneously
+ * - setSampleInfos(samples): Fetches additional metadata for samples
+ * - startFromFiles(): Loads samples from local files
+ * - getRandomSample(): Fetches a random sample from Freesound
+ *
+ * @api
+ * - GET /apiv2/search/text/ - Random sample search
+ * - GET /apiv2/sounds/{id}/ - Sample metadata retrieval
+ *
+ * @security
+ * Requires Freesound API key configured in window.ENV
+ */
+
 const API_KEY = window.ENV?.FREESOUND_API_KEY;
 
 // Utility functions

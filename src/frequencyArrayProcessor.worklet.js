@@ -1,3 +1,30 @@
+/**
+ * @file frequencyArrayProcessor.worklet.js
+ * @description Audio Worklet Processor for frequency-based audio synthesis.
+ * Generates audio output based on an array of frequencies and magnitudes.
+ *
+ * @module FrequencyArrayProcessor
+ * @author eggman
+ * @created 2025
+ *
+ * @extends AudioWorkletProcessor
+ *
+ * @properties
+ * - sampleRate: Audio sample rate (default: 44100Hz)
+ * - phase: Current phase accumulator for waveform generation
+ * - frequencyArray: Array of {frequency, magnitude} objects for synthesis
+ *
+ * @methods
+ * - handleMessage: Processes incoming frequency array updates
+ * - generateSound: Synthesizes audio based on frequency components
+ * - process: Main audio processing callback
+ *
+ * @algorithm
+ * Uses phase accumulation and sine wave synthesis to generate
+ * complex waveforms from multiple frequency components.
+ * Phase wrapping prevents numerical overflow.
+ */
+
 class FrequencyArrayProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
