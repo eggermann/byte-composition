@@ -28,11 +28,7 @@ export function initSpectroVisualizer3D(analyser, options = {}) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-    canvas.style.position = 'fixed';
-    canvas.style.top = '0';
-    canvas.style.right = '0';
-    canvas.style.zIndex = '9999';
-    canvas.style.border = '1px solid #333';
+    // Inline styles removed - will be handled by CSS
     document.body.appendChild(canvas);
 
     const ctx = canvas.getContext('2d');
