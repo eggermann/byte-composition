@@ -89,7 +89,6 @@ const _ = {
             throw new Error("No URL provided for sample");
         }
         return await _.decodeAndResampleAudio(arrayBuffer);
-        return await _.decodeAndResampleAudio(arrayBuffer);
     },
 
     addBufferToWorklet(buffer, index = 0, processorId = "proc1") {
