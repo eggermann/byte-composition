@@ -50,7 +50,16 @@ async function getRandomSample() {
     return data.results[0];
   } catch (error) {
     console.error('Freesound API error:', error.message);
-    throw error;
+    
+    // Try to get a random sample from buffer instead
+    console.log('Attempting to fall back to buffer sample...');
+    const bufferSample = await getRandomBufferSample();
+    return {
+      id: bufferSample.id,
+      previews: {
+        'preview-hq-mp3': bufferSample.path
+      }
+    };
   }
 }
 
@@ -130,43 +139,41 @@ export default async function handler(req, res) {
     // Wait for database to be ready
     await dbInitPromise;
 
+    // Get a random sample (will fallback to buffer if needed)
+    const sample = await getRandomSample();
+    const preview = sample.previews['preview-hq-mp3'];
+
+    // If the sample is from buffer, return it directly
+    if (preview.startsWith('/samples/')) {
+      return res.status(200).json({
+        id: sample.id,
+        path: preview,
+        source: 'buffer',
+        fallbackReason: 'Used buffer sample'
+      });
+    }
+    
+    // Try to download and save the Freesound sample
     try {
-      // Try to fetch a new random sample
-      const sample = await getRandomSample();
-      const preview = sample.previews['preview-hq-mp3'];
-      
-      // Try to download and save the sample
       const filePath = await downloadSample(preview, sample.id);
       return res.status(200).json({
         id: sample.id,
         path: getPublicPath(filePath),
         source: 'freesound'
       });
-    } catch (freesoundError) {
-      console.error('Freesound API or download error:', freesoundError);
-      
-      // If Freesound fails, try to get a random sample from buffer
-      try {
-        const bufferSample = await getRandomBufferSample();
-        return res.status(200).json({
-          ...bufferSample,
-          source: 'buffer',
-          fallbackReason: 'Freesound API failed'
-        });
-      } catch (bufferError) {
-        // If both fail, return a helpful error
-        console.error('Buffer fallback error:', bufferError);
-        return res.status(500).json({ 
-          error: 'Could not get a sample',
-          details: `1. Freesound API: ${freesoundError.message}
-                   2. Buffer: ${bufferError.message}`,
-          solution: 'Please set a valid FREESOUND_API_KEY in your .env file'
-        });
-      }
+    } catch (downloadError) {
+      console.error('Download error:', downloadError);
+      // If download fails, get a random buffer sample as fallback
+      const bufferSample = await getRandomBufferSample();
+      return res.status(200).json({
+        ...bufferSample,
+        source: 'buffer',
+        fallbackReason: 'Download failed'
+      });
     }
   } catch (error) {
     console.error('Unexpected error:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Server error',
       details: error.message
     });
