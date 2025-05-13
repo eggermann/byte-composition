@@ -23,7 +23,7 @@ export default function Home() {
       if (!response.ok) {
         throw new Error(data.error || data.details || `HTTP error! status: ${response.status}`);
       }
-      
+      data.results.sort((a, b) => new Date(b.downloaded) - new Date(a.downloaded));
       setSamples(data.results || []);
     } catch (err) {
       const errorMessage = err.message || 'Failed to fetch samples';
