@@ -2,11 +2,31 @@ import { useEffect, useState, useCallback } from 'react';
 import Error from '../components/Error';
 import styles from '../styles/Home.module.css';
 
+const SampleCard = ({ sample }) => (
+  <div key={sample.id} className={styles.card}>
+    <h3>Sample {sample.id}</h3>
+    <p>Downloaded: {new Date(sample.downloaded).toLocaleString()}</p>
+    {sample.path && (
+      <>
+        <audio 
+          controls 
+          src={sample.path}
+          onError={(e) => console.error('Audio error:', e)} 
+        />
+        <p className={styles.source}>
+          Source: {sample.source || 'Database'}
+        </p>
+      </>
+    )}
+  </div>
+);
+
 export default function Home() {
   const [samples, setSamples] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [apiStatus, setApiStatus] = useState({ loading: false, error: null });
+  const [latestSample, setLatestSample] = useState(null);
 
   const fetchSamples = useCallback(async () => {
     try {
@@ -23,7 +43,7 @@ export default function Home() {
       if (!response.ok) {
         throw new Error(data.error || data.details || `HTTP error! status: ${response.status}`);
       }
-      data.results.sort((a, b) => new Date(b.downloaded) - new Date(a.downloaded));
+      
       setSamples(data.results || []);
     } catch (err) {
       const errorMessage = err.message || 'Failed to fetch samples';
@@ -41,6 +61,7 @@ export default function Home() {
   const handleRefresh = async () => {
     try {
       setApiStatus({ loading: true, error: null });
+      setLatestSample(null);
       
       console.log('Fetching random sample...');
       const response = await fetch('/api/random');
@@ -52,6 +73,12 @@ export default function Home() {
       if (!response.ok) {
         throw new Error(data.error || data.details || `HTTP error! status: ${response.status}`);
       }
+      
+      // Set the latest sample
+      setLatestSample({
+        ...data,
+        downloaded: new Date().toISOString()
+      });
       
       // Refresh the list after getting a new sample
       await fetchSamples();
@@ -92,40 +119,36 @@ export default function Home() {
           )}
         </div>
 
+        {/* Latest random sample */}
+        {latestSample && (
+          <div className={styles.latestSample}>
+            <h2>Latest Random Sample</h2>
+            <SampleCard sample={latestSample} />
+          </div>
+        )}
+
         {error ? (
           <Error 
             message={error}
             onRetry={fetchSamples}
           />
         ) : (
-          <div className={styles.grid}>
-            {samples.length === 0 ? (
-              <p className={styles.noSamples}>
-                No samples available. Click "Get Random Sample" to fetch one from Freesound.org.
-                <br />
-                <small>Make sure your Freesound API key is set in the .env file.</small>
-              </p>
-            ) : (
-              samples.map((sample) => (
-                <div key={sample.id} className={styles.card}>
-                  <h3>Sample {sample.id}</h3>
-                  <p>Downloaded: {new Date(sample.downloaded).toLocaleString()}</p>
-                  {sample.path && (
-                    <>
-                      <audio 
-                        controls 
-                        src={sample.path}
-                        onError={(e) => console.error('Audio error:', e)} 
-                      />
-                      <p className={styles.source}>
-                        Source: {sample.source || 'Database'}
-                      </p>
-                    </>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
+          <>
+            <h2 className={styles.sectionTitle}>All Samples</h2>
+            <div className={styles.grid}>
+              {samples.length === 0 ? (
+                <p className={styles.noSamples}>
+                  No samples available. Click "Get Random Sample" to fetch one from Freesound.org.
+                  <br />
+                  <small>Make sure your Freesound API key is set in the .env file.</small>
+                </p>
+              ) : (
+                samples.map(sample => (
+                  <SampleCard key={sample.id} sample={sample} />
+                ))
+              )}
+            </div>
+          </>
         )}
       </main>
     </div>

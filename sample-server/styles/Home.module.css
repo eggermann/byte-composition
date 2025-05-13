@@ -27,6 +27,14 @@
   color: #333;
 }
 
+.sectionTitle {
+  margin: 2rem 0 1rem;
+  font-size: 1.8rem;
+  color: #444;
+  text-align: center;
+  width: 100%;
+}
+
 .controls {
   margin-bottom: 2rem;
   width: 100%;
@@ -78,6 +86,29 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.latestSample {
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 3rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.latestSample h2 {
+  font-size: 1.5rem;
+  color: #0070f3;
+  margin: 0 0 1rem 0;
+  text-align: center;
+}
+
+.latestSample .card {
+  margin: 0;
+  max-width: none;
+  background: white;
 }
 
 .grid {
@@ -164,7 +195,16 @@
     font-size: 2rem;
   }
   
+  .sectionTitle {
+    font-size: 1.5rem;
+  }
+  
   .controls {
     padding: 0 1rem;
+  }
+  
+  .latestSample {
+    margin: 1rem;
+    padding: 0.5rem;
   }
 }
