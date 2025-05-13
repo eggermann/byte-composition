@@ -9,12 +9,15 @@ const SampleCard = ({ sample }) => (
     {sample.size && (
       <p className={styles.size}>Size: {(sample.size / 1024 / 1024).toFixed(2)} MB</p>
     )}
+    {sample.description && (
+      <p className={styles.description}>{sample.description}</p>
+    )}
     {sample.path && (
       <>
-        <audio 
-          controls 
+        <audio
+          controls
           src={sample.path}
-          onError={(e) => console.error('Audio error:', e)} 
+          onError={(e) => console.error('Audio error:', e)}
         />
         <p className={styles.source}>
           Source: {sample.source || 'Database'}

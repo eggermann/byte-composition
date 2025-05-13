@@ -234,6 +234,17 @@
   color: #999;
 }
 
+.description {
+  font-size: 0.95rem;
+  color: #444;
+  margin: 0.75rem 0;
+  background-color: #f7f7f7;
+  padding: 0.75rem;
+  border-radius: 5px;
+  border-left: 3px solid #0070f3;
+  line-height: 1.4;
+}
+
 .sectionTitle {
   margin: 2rem 0 1rem;
   font-size: 1.8rem;

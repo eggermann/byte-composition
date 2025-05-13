@@ -46,7 +46,8 @@ export default async function handler(req, res) {
           id: sample.id,
           path: getPublicPath(sample.path),
           size: sample.size,
-          downloaded: sample.downloaded
+          downloaded: sample.downloaded,
+          description: sample.description || 'No description available'
         });
       } catch (sampleError) {
         console.error(`Error processing sample ${key}:`, sampleError);

@@ -24,7 +24,7 @@ async function getRandomSample() {
       `https://freesound.org/apiv2/search/text/?` +
       `query=${rnd}&` +
       `page_size=1&` +
-      `fields=url,id,previews&` +
+      `fields=url,id,previews,description&` +
       `token=${process.env.FREESOUND_API_KEY}`, {
         headers: {
           'Accept': 'application/json'
@@ -47,7 +47,11 @@ async function getRandomSample() {
       return getRandomSample(); // Retry with different tag
     }
 
-    return data.results[0];
+    const sample = data.results[0];
+    return {
+      ...sample,
+      description: sample.description || 'No description available'
+    };
   } catch (error) {
     console.error('Freesound API error:', error.message);
     
@@ -58,12 +62,13 @@ async function getRandomSample() {
       id: bufferSample.id,
       previews: {
         'preview-hq-mp3': bufferSample.path
-      }
+      },
+      description: bufferSample.description
     };
   }
 }
 
-async function downloadSample(preview, id) {
+async function downloadSample(preview, id, description) {
   console.log(`Downloading sample ${id}...`);
   
   const response = await fetch(preview);
@@ -90,7 +95,8 @@ async function downloadSample(preview, id) {
     id,
     path: filePath,
     size: sampleSize,
-    downloaded: new Date().toISOString()
+    downloaded: new Date().toISOString(),
+    description: description || 'No description available'
   };
   
   db.put(id, metadata);
@@ -124,7 +130,8 @@ async function getRandomBufferSample() {
   return {
     path: getPublicPath(sampleInfo.path),
     id: sampleInfo.id,
-    size: sampleInfo.size
+    size: sampleInfo.size,
+    description: sampleInfo.description || 'No description available'
   };
 }
 
@@ -148,6 +155,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         id: sample.id,
         path: preview,
+        description: sample.description,
         source: 'buffer',
         fallbackReason: 'Used buffer sample'
       });
@@ -155,10 +163,11 @@ export default async function handler(req, res) {
     
     // Try to download and save the Freesound sample
     try {
-      const filePath = await downloadSample(preview, sample.id);
+      const filePath = await downloadSample(preview, sample.id, sample.description);
       return res.status(200).json({
         id: sample.id,
         path: getPublicPath(filePath),
+        description: sample.description,
         source: 'freesound'
       });
     } catch (downloadError) {
