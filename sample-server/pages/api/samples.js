@@ -1,7 +1,27 @@
-import { initDB, getDB, getPublicPath } from '../../lib/db';
+import { initDB, getDB, getPublicPath, BUFFER_DIR } from '../../lib/db';
+import fs from 'fs-extra';
+import path from 'path';
 
 // Initialize database when module loads
 let dbInitPromise = initDB();
+
+// Get total size of buffer directory
+async function getBufferStats() {
+  let totalSize = 0;
+  const files = await fs.readdir(BUFFER_DIR);
+  
+  for (const file of files) {
+    const stats = await fs.stat(path.join(BUFFER_DIR, file));
+    totalSize += stats.size;
+  }
+  
+  return {
+    totalSize,
+    sampleCount: files.length,
+    maxSize: 400 * 1024 * 1024, // 400MB in bytes
+    usagePercent: (totalSize / (400 * 1024 * 1024) * 100).toFixed(1)
+  };
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -15,8 +35,7 @@ export default async function handler(req, res) {
     console.log('Samples API called');
     
     // Wait for database to be ready
-    await dbInitPromise;
-    const db = getDB();
+    const db = await dbInitPromise;
 
     // Get all samples from the database
     const samples = [];
@@ -25,7 +44,8 @@ export default async function handler(req, res) {
         const sample = db.get(key);
         samples.push({
           id: sample.id,
-          path: getPublicPath(sample.path), // Convert to public URL
+          path: getPublicPath(sample.path),
+          size: sample.size,
           downloaded: sample.downloaded
         });
       } catch (sampleError) {
@@ -33,11 +53,16 @@ export default async function handler(req, res) {
       }
     });
 
-    // Log the result for debugging
-    console.log(`Found ${samples.length} samples`);
+    // Get buffer statistics
+    const stats = await getBufferStats();
+    console.log('Buffer stats:', stats);
+
+    // Sort samples by download date (newest first)
+    samples.sort((a, b) => new Date(b.downloaded) - new Date(a.downloaded));
 
     return res.status(200).json({
       count: samples.length,
+      bufferStats: stats,
       results: samples
     });
   } catch (error) {

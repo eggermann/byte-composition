@@ -6,6 +6,9 @@ const SampleCard = ({ sample }) => (
   <div key={sample.id} className={styles.card}>
     <h3>Sample {sample.id}</h3>
     <p>Downloaded: {new Date(sample.downloaded).toLocaleString()}</p>
+    {sample.size && (
+      <p className={styles.size}>Size: {(sample.size / 1024 / 1024).toFixed(2)} MB</p>
+    )}
     {sample.path && (
       <>
         <audio 
@@ -21,12 +24,47 @@ const SampleCard = ({ sample }) => (
   </div>
 );
 
+const BufferStats = ({ stats }) => (
+  <div className={styles.bufferStats}>
+    <h3>Buffer Usage</h3>
+    <div className={styles.statsGrid}>
+      <div className={styles.statItem}>
+        <span className={styles.statLabel}>Used:</span>
+        <span className={styles.statValue}>
+          {(stats.totalSize / 1024 / 1024).toFixed(2)} MB
+        </span>
+      </div>
+      <div className={styles.statItem}>
+        <span className={styles.statLabel}>Total:</span>
+        <span className={styles.statValue}>
+          {(stats.maxSize / 1024 / 1024).toFixed(0)} MB
+        </span>
+      </div>
+      <div className={styles.statItem}>
+        <span className={styles.statLabel}>Samples:</span>
+        <span className={styles.statValue}>{stats.sampleCount}</span>
+      </div>
+      <div className={styles.statItem}>
+        <span className={styles.statLabel}>Usage:</span>
+        <span className={styles.statValue}>{stats.usagePercent}%</span>
+      </div>
+    </div>
+    <div className={styles.progressBar}>
+      <div 
+        className={styles.progress} 
+        style={{ width: `${stats.usagePercent}%` }}
+      />
+    </div>
+  </div>
+);
+
 export default function Home() {
   const [samples, setSamples] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [apiStatus, setApiStatus] = useState({ loading: false, error: null });
   const [latestSample, setLatestSample] = useState(null);
+  const [bufferStats, setBufferStats] = useState(null);
 
   const fetchSamples = useCallback(async () => {
     try {
@@ -45,6 +83,7 @@ export default function Home() {
       }
       
       setSamples(data.results || []);
+      setBufferStats(data.bufferStats);
     } catch (err) {
       const errorMessage = err.message || 'Failed to fetch samples';
       console.error('Error fetching samples:', err);
@@ -102,6 +141,8 @@ export default function Home() {
     <div className={styles.container}>
       <main className={styles.main}>
         <h1 className={styles.title}>Samples</h1>
+        
+        {bufferStats && <BufferStats stats={bufferStats} />}
         
         <div className={styles.controls}>
           <button 

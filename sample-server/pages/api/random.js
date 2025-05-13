@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 import fs from 'fs-extra';
 import path from 'path';
-import { initDB, getDB, BUFFER_DIR, getPublicPath } from '../../lib/db';
+import { initDB, getDB, BUFFER_DIR, getPublicPath, cleanupBuffer } from '../../lib/db';
 
 // Initialize database when module loads
 let dbInitPromise = initDB();
@@ -14,15 +14,18 @@ async function getRandomSample() {
     );
   }
 
-  const rnd = Math.round(Math.random() * 100000);
-  console.log('Random number:', rnd);
+  // Random tags for better sample discovery
+  const tags = ['field-recording', 'sound', 'effect', 'ambient', 'music'];
+  const randomTag = tags[Math.floor(Math.random() * tags.length)];
+  
+  console.log('Fetching with tag:', randomTag);
 
   try {
     const response = await fetch(
-      `https://freesound.org/apiv2/search/text/?` +
-      `query=${rnd}&` +
+      `https://freesound.org/apiv2/search/text/?` + 
+      `query=${randomTag}&` +
       `page_size=1&` +
-      `fields=url,id,previews&` +
+      `fields=id,name,previews&` +
       `token=${process.env.FREESOUND_API_KEY}`, {
         headers: {
           'Accept': 'application/json'
@@ -40,9 +43,9 @@ async function getRandomSample() {
     const data = await response.json();
     console.log('Freesound API response:', data);
 
-    if (!data.count) {
-      console.log('No samples found, retrying...');
-      return getRandomSample(); // Retry if no samples found
+    if (!data.results || data.results.length === 0) {
+      console.log('No samples found, retrying with different tag...');
+      return getRandomSample(); // Retry with different tag
     }
 
     return data.results[0];
@@ -60,17 +63,25 @@ async function downloadSample(preview, id) {
     throw new Error(`Failed to download sample: ${response.status} ${response.statusText}`);
   }
 
-  const buffer = await response.arrayBuffer();
-  const filePath = path.join(BUFFER_DIR, `${id}.mp3`);
+  // Get the sample size
+  const arrayBuffer = await response.arrayBuffer();
+  const sampleSize = arrayBuffer.byteLength;
   
-  console.log(`Writing to ${filePath}...`);
-  await fs.writeFile(filePath, Buffer.from(buffer));
+  // Clean up buffer if needed
+  await cleanupBuffer(sampleSize);
+  
+  const filePath = path.join(BUFFER_DIR, `${id}.mp3`);
+  console.log(`Writing ${sampleSize} bytes to ${filePath}...`);
+  
+  // Save the file
+  await fs.writeFile(filePath, Buffer.from(arrayBuffer));
   
   // Save to database
   const db = getDB();
   const metadata = {
     id,
     path: filePath,
+    size: sampleSize,
     downloaded: new Date().toISOString()
   };
   
@@ -104,7 +115,8 @@ async function getRandomBufferSample() {
   
   return {
     path: getPublicPath(sampleInfo.path),
-    id: sampleInfo.id
+    id: sampleInfo.id,
+    size: sampleInfo.size
   };
 }
 
