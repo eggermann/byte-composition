@@ -14,18 +14,15 @@ async function getRandomSample() {
     );
   }
 
-  // Random tags for better sample discovery
-  const tags = ['field-recording', 'sound', 'effect', 'ambient', 'music'];
-  const randomTag = tags[Math.floor(Math.random() * tags.length)];
-  
-  console.log('Fetching with tag:', randomTag);
+  const rnd = Math.round(Math.random() * 100000);
+  console.log('Random number:', rnd);
 
   try {
     const response = await fetch(
-      `https://freesound.org/apiv2/search/text/?` + 
-      `query=${randomTag}&` +
+      `https://freesound.org/apiv2/search/text/?` +
+      `query=${rnd}&` +
       `page_size=1&` +
-      `fields=id,name,previews&` +
+      `fields=url,id,previews&` +
       `token=${process.env.FREESOUND_API_KEY}`, {
         headers: {
           'Accept': 'application/json'
@@ -43,9 +40,9 @@ async function getRandomSample() {
     const data = await response.json();
     console.log('Freesound API response:', data);
 
-    if (!data.results || data.results.length === 0) {
-      console.log('No samples found, retrying with different tag...');
-      return getRandomSample(); // Retry with different tag
+    if (!data.count) {
+      console.log('No samples found, retrying...');
+      return getRandomSample(); // Retry if no samples found
     }
 
     return data.results[0];

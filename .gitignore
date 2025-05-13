@@ -12,6 +12,8 @@ build/
 .env.*
 
 # Development files
+**/.next/
+sample-server/public/buffer
 .history
 .DS_Store
 *.log
@@ -28,4 +30,4 @@ yarn-error.log*
 .vscode/
 *.suo
 *.ntvs*
-*.njsproj
+*.njsproj#
