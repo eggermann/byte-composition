@@ -1,4 +1,33 @@
-// index.js
+/**
+ * @file index.js
+ * @description Main entry point for the ByteComposition application. Handles audio initialization,
+ * processor management, UI setup, and audio playback control.
+ *
+ * @module ByteCompositionApp
+ * @author eggman
+ * @created 2025
+ *
+ * @dependencies
+ * - standardized-audio-context: Provides AudioWorkletNode implementation
+ * - tone: Audio context management
+ * - byteStepProcessor.worklet.js: Custom audio processor for byte-based audio manipulation
+ * - freesound-client.js: API client for Freesound sample fetching
+ * - analyzer.js: Audio analysis utilities
+ * - spectroVisualizer-exp.js: 3D spectrogram visualization
+ *
+ * @constants
+ * - prefetchedSamplesSize: Number of samples to prefetch (2)
+ * - PROCESSOR_COUNT: Number of parallel audio processors (3)
+ *
+ * @state
+ * - isInitialized: Tracks initialization status
+ * - isPlaying: Tracks playback status
+ * - audioContext: Main WebAudio context
+ *
+ * @exports
+ * None (Main application entry point)
+ */
+
 import { AudioWorkletNode } from "standardized-audio-context";
 import { getContext } from "tone";
 import byteStepProcessor from './byteStepProcessor/byteStepProcessor.worklet.js';
@@ -59,7 +88,6 @@ const _ = {
         } else {
             throw new Error("No URL provided for sample");
         }
-        return await _.decodeAndResampleAudio(arrayBuffer);
         return await _.decodeAndResampleAudio(arrayBuffer);
     },
 

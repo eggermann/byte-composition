@@ -1,3 +1,28 @@
+/**
+ * @file composition.js
+ * @description Audio buffer composition and arrangement module. Provides utilities for
+ * manipulating and combining audio buffers with different arrangement strategies.
+ *
+ * @module Composition
+ * @author eggman
+ * @created 2025
+ *
+ * @dependencies
+ * - WorkBuffer.js: Custom audio buffer wrapper implementation
+ *
+ * @exports {Object} arrangement
+ * Methods:
+ * - equal(s1, s2): Equalizes two buffers to the same length
+ * - random(s1, s2): Applies random arrangement strategy
+ * - repeat(s1, s2, justifyContent): Repeats smaller buffer with spacing options
+ *
+ * @arrangements
+ * - space-between: Distributes space between segments
+ * - space-evenly: Equal space before, between, and after segments
+ * - center: Centers the arrangement
+ * - start: Aligns to the start
+ */
+
 import {WorkBuffer} from './WorkBuffer';
 
 export default {
