@@ -19,8 +19,37 @@ module.exports = {
             key: 'Accept-Ranges',
             value: 'bytes',
           },
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: 'http://localhost:9001',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Accept',
+          }
         ],
       },
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: 'http://localhost:9001',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Accept',
+          }
+        ],
+      }
     ]
   }
 }

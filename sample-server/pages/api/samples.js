@@ -24,8 +24,18 @@ async function getBufferStats() {
 }
 
 export default async function handler(req, res) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:9001');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle OPTIONS request for CORS preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'GET') {
-    return res.status(405).json({ 
+    return res.status(405).json({
       error: 'Method not allowed',
       allowedMethods: ['GET']
     });
