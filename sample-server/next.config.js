@@ -1,9 +1,13 @@
 /** @type {import('next').NextConfig} */
+const isProd = process.env.NODE_ENV === 'production';
+const FRONTEND_URL = process.env.FRONTEND_BASE_URL || 'http://localhost:9001';
+
 module.exports = {
   // Disable React Strict Mode to prevent double mounting in development
   reactStrictMode: false,
   env: {
     FREESOUND_API_KEY: process.env.FREESOUND_API_KEY,
+    IS_PRODUCTION: isProd
   },
   // Configure headers for audio files
   async headers() {
@@ -21,7 +25,7 @@ module.exports = {
           },
           {
             key: 'Access-Control-Allow-Origin',
-            value: 'http://localhost:9001',
+            value: FRONTEND_URL,
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -38,7 +42,7 @@ module.exports = {
         headers: [
           {
             key: 'Access-Control-Allow-Origin',
-            value: 'http://localhost:9001',
+            value: FRONTEND_URL,
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -51,5 +55,14 @@ module.exports = {
         ],
       }
     ]
+  },
+
+  // Output configuration for deployment
+  output: isProd ? 'standalone' : undefined,
+
+  // Enable experimental features for production optimization
+  experimental: {
+    optimizeCss: true,
+    outputFileTracingRoot: undefined,
   }
 }

@@ -25,8 +25,12 @@
  */
 
 const API_KEY = window.ENV?.FREESOUND_API_KEY;
-const SAMPLE_SERVER_URL = 'http://localhost:3002';
+const SAMPLE_SERVER_URL = window.ENV?.SAMPLE_SERVER_URL;
 const SAMPLE_SERVER_API = `${SAMPLE_SERVER_URL}/api`;
+
+if (!SAMPLE_SERVER_URL) {
+    console.warn('SAMPLE_SERVER_URL not configured in environment');
+}
 
 // Default config
 const defaultConfig = {
@@ -69,7 +73,9 @@ async function getRandomSample() {
             // Transform relative path to absolute URL when using sample server
             const samplePath = data.path.startsWith('http')
                 ? data.path
-                : `${SAMPLE_SERVER_URL}${data.path}`;
+                : data.path.startsWith('/')
+                    ? `${SAMPLE_SERVER_URL}${data.path}`
+                    : `${SAMPLE_SERVER_URL}/${data.path}`;
             return {
                 id: data.id,
                 previews: {
