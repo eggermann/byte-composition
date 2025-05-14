@@ -7,8 +7,23 @@ module.exports = {
   reactStrictMode: false,
   env: {
     FREESOUND_API_KEY: process.env.FREESOUND_API_KEY,
-    IS_PRODUCTION: isProd
+    IS_PRODUCTION: isProd ? 'true' : 'false'
   },
+
+  // Optimize static rendering
+  optimizeFonts: true,
+  swcMinify: true,
+  poweredByHeader: false,
+
+  // Configure static optimization
+  experimental: {
+    optimizeCss: true,
+    critters: {
+      preload: 'media',
+      preloadFonts: true
+    }
+  },
+
   // Configure headers for audio files
   async headers() {
     return [

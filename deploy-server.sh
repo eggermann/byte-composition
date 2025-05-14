@@ -10,7 +10,7 @@ fi
 source .env.production
 
 # Validate required environment variables
-required_vars=("SSH_USER" "SSH_HOST" "SSH_PASSWORD" "REMOTE_SERVER_PATH")
+required_vars=("SSH_USER" "SSH_HOST" "SSH_PASSWORD" "REMOTE_SERVER_PATH" "DEPLOY_DIR")
 missing_vars=()
 
 for var in "${required_vars[@]}"; do
@@ -38,18 +38,44 @@ fi
 
 echo "Starting server deployment process..."
 
-# Build the server
+# Build the server locally
 echo "Building sample-server..."
 cd sample-server
 NODE_ENV=production npx next build
 
-# Deploy using sshpass
-echo "Deploying sample-server to production..."
+# Create a temporary deployment directory
 cd ..
-sshpass -p "$SSH_PASSWORD" rsync -avz --progress sample-server/ "$SSH_USER@$SSH_HOST:$REMOTE_SERVER_PATH/"
+rm -rf "${DEPLOY_DIR}"
+mkdir -p "${DEPLOY_DIR}"
 
-# Restart server using sshpass
-echo "Restarting server..."
-sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "cd $REMOTE_SERVER_PATH && pm2 restart sample-server"
+# Copy server files excluding development/unnecessary files
+echo "Copying server files..."
+rsync -av --progress \
+  --exclude='node_modules' \
+  --exclude='.git' \
+  --exclude='.gitignore' \
+  --exclude='public/buffer' \
+  sample-server/ "${DEPLOY_DIR}/"
+
+# Deploy using sshpass
+echo "Deploying server as ${DEPLOY_DIR}..."
+
+# Remove existing deployment directory on remote server
+echo "Removing existing deployment directory on remote server..."
+sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "rm -rf $REMOTE_SERVER_PATH"
+
+# Deploy new version
+sshpass -p "$SSH_PASSWORD" rsync -avz --progress "${DEPLOY_DIR}/" "$SSH_USER@$SSH_HOST:$REMOTE_SERVER_PATH/"
+
+# Set up Node.js server on remote
+echo "Setting up Node.js server on remote..."
+sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "cd $REMOTE_SERVER_PATH && \
+    npm ci --production && \
+    npm run build && \
+    pm2 delete $(basename ${DEPLOY_DIR}) || true && \
+    PORT=3000 pm2 start npm --name $(basename ${DEPLOY_DIR}) -- start"
+
+# Clean up local deployment directory
+rm -rf "${DEPLOY_DIR}"
 
 echo "Server deployment completed successfully."
