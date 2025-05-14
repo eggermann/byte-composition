@@ -41,7 +41,12 @@ function analyzeLoudness(data) {
 }
 
 async function getAudioBufferFromSample(url) {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+        mode: 'cors',
+        headers: {
+            'Accept': 'audio/mpeg, application/octet-stream'
+        }
+    });
     const arrayBuffer = await response.arrayBuffer();
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
