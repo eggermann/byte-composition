@@ -45,52 +45,76 @@ check_dependencies() {
     fi
 }
 
-build_local() {
-    echo "Building Next.js application locally..."
-    cd sample-server
-    NODE_ENV=production npx next build
-    cd ..
-}
-
 prepare_deployment() {
-    echo "Preparing deployment directory..."
+    echo "Preparing deployment directory... ${DEPLOY_DIR}"
     rm -rf "${DEPLOY_DIR}"
     mkdir -p "${DEPLOY_DIR}"
-
-    echo "Copying server files..."
+    
+    echo "Copying source files..."
     rsync -av --progress \
         --exclude='node_modules' \
+        --exclude='.next' \
         --exclude='.git' \
         --exclude='.gitignore' \
         --exclude='public/buffer' \
+        --exclude='package-lock.json' \
         sample-server/ "${DEPLOY_DIR}/"
 }
 
 deploy_to_remote() {
     echo "Deploying to remote server..."
-    echo "Creating remote directory..."
+    sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "rm -rf $REMOTE_SERVER_PATH"
     sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_SERVER_PATH"
 
     echo "Copying files to remote server..."
     sshpass -p "$SSH_PASSWORD" rsync -avz --progress "${DEPLOY_DIR}/" "$SSH_USER@$SSH_HOST:$REMOTE_SERVER_PATH/"
 }
 
+build_on_remote() {
+    echo "Building Next.js application on remote server..."
+    # Get parent directory for DB_PATH
+    local DB_DIR=$(dirname "$REMOTE_SERVER_PATH")
+
+    # Kill any existing processes more gracefully
+    sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "
+        if command -v supervisorctl &> /dev/null; then
+            echo 'Stopping supervisor service if exists...' && \
+            supervisorctl stop sample-server || true
+        fi && \
+        echo 'Cleaning up any remaining processes...' && \
+        pkill -f 'node.*server.js' || true && \
+        sleep 2"
+
+    # Copy .env.production to remote server
+    echo "Copying .env.production to remote server..."
+    sshpass -p "$SSH_PASSWORD" scp .env.production "$SSH_USER@$SSH_HOST:$REMOTE_SERVER_PATH/"
+
+    # Build the application
+    sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "cd $REMOTE_SERVER_PATH && \
+        rm -rf node_modules .next package-lock.json && \
+        npm install --no-package-lock && \
+        source .env.production && \
+        PORT=${PORT} DB_PATH=${DB_DIR}/samples.db NODE_ENV=production npm run build"
+}
+
 setup_supervisor() {
     echo "Setting up supervisor service..."
-    local service_name="sample-server"
-    local service_path="~/etc/services.d"
+    # Get parent directory for DB_PATH
+    local DB_DIR=$(dirname "$REMOTE_SERVER_PATH")
+    
+    # Read variables from .env.production
+    local env_vars=""
+    while IFS='=' read -r key value; do
+        if [[ ! -z "$key" && ! "$key" =~ ^# ]]; then
+            env_vars="${env_vars},${key}=\"${value}\""
+        fi
+    done < .env.production
+    env_vars=$(echo "$env_vars" | sed 's/^,//')
 
-    sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" bash <<EOF
-set -e
-mkdir -p $REMOTE_SERVER_PATH
-cd $REMOTE_SERVER_PATH
-npm ci --production
-mkdir -p $service_path
-cat > $service_path/${service_name}.ini <<CONFIG
-[program:${service_name}]
-command=/opt/nodejs20/bin/npx next start -p ${PORT}
+    local config="[program:sample-server]
 directory=${REMOTE_SERVER_PATH}
-environment=NODE_ENV="production"
+command=/opt/nodejs20/bin/node server.js
+environment=PORT=\"${PORT}\",DB_PATH=\"${DB_DIR}/samples.db\",NODE_ENV=\"production\",NODE_VERSION=\"20\",PATH=\"/opt/nodejs20/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin\"${env_vars}
 autostart=yes
 autorestart=yes
 startsecs=5
@@ -99,21 +123,26 @@ stdout_logfile=${REMOTE_SERVER_PATH}/app.log
 stderr_logfile=${REMOTE_SERVER_PATH}/error.log
 stopasgroup=true
 killasgroup=true
-CONFIG
-pkill -f 'next start' || true
-supervisorctl reread
-supervisorctl update
-sleep 5
-supervisorctl status ${service_name}
-tail -n 20 ${REMOTE_SERVER_PATH}/error.log || true
-EOF
+stopsignal=SIGTERM"
+
+    sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "set -e && \
+        mkdir -p $REMOTE_SERVER_PATH && \
+        cd $REMOTE_SERVER_PATH && \
+        mkdir -p ~/service && \
+        echo '$config' > ~/service/sample-server.ini && \
+        supervisorctl reread && \
+        supervisorctl update && \
+        sleep 5 && \
+        supervisorctl start sample-server && \
+        supervisorctl status sample-server && \
+        tail -n 20 ${REMOTE_SERVER_PATH}/error.log || true"
 }
 
 verify_deployment() {
     echo "Verifying deployment..."
     sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "
         echo 'Checking supervisor status...' && \
-        supervisorctl status ${service_name}  && \
+        supervisorctl status sample-server && \
         echo 'Checking if port is in use...' && \
         netstat -tlpn 2>/dev/null | grep ${PORT} || echo 'Port ${PORT} is not in use' && \
         echo 'Recent logs:' && \
@@ -131,9 +160,9 @@ main() {
     
     check_env
     check_dependencies
-    build_local
     prepare_deployment
     deploy_to_remote
+    build_on_remote
     setup_supervisor
     verify_deployment
     cleanup
@@ -141,6 +170,7 @@ main() {
     echo "Server deployment completed."
     echo "Your application should be available at: https://${SSH_USER}.uber.space:${PORT}"
     echo "Check the logs above for any startup issues"
+    echo "Database will be stored at: ${DB_DIR}/samples.db"
 }
 
 # Allow running individual functions for testing

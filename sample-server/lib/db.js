@@ -3,7 +3,7 @@ import flatfile from 'flat-file-db';
 import fs from 'fs-extra';
 
 // Set up paths
-const DB_PATH = path.join(process.cwd(), 'samples.db');
+const DB_PATH = path.join(process.env.HOME || process.env.USERPROFILE, 'db', 'sample-server', 'samples.db');
 const PUBLIC_DIR = path.join(process.cwd(), 'public');
 const BUFFER_DIR = path.join(PUBLIC_DIR, 'buffer');
 
@@ -67,6 +67,7 @@ export function initDB() {
     fs.ensureDirSync(PUBLIC_DIR);
     fs.ensureDirSync(BUFFER_DIR);
     console.log('Buffer directory created at:', BUFFER_DIR);
+    console.log('Database path:', DB_PATH);
 
     db = flatfile(DB_PATH);
 
