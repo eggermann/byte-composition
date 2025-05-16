@@ -16,7 +16,7 @@ const SampleCard = ({ sample }) => (
       <>
         <audio
           controls
-          src={sample.path}
+          src={`${process.env.NODE_ENV === 'production' ? '/sample-server' : ''}${sample.path}`}
           onError={(e) => console.error('Audio error:', e)}
         />
         <p className={styles.source}>
@@ -75,21 +75,33 @@ export default function Home() {
       setError(null);
       
       console.log('Fetching samples...');
-      const response = await fetch('/api/samples');
+      const basePath = process.env.NODE_ENV === 'production' ? '/sample-server' : '';
+      const response = await fetch(`${basePath}/api/samples`);
       console.log('Response:', response.status);
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('Error response text:', text);
+        try {
+          const data = JSON.parse(text);
+          throw new Error(data.error || data.details || `HTTP error! status: ${response.status}`);
+        } catch (parseError) {
+          throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}...`);
+        }
+      }
       
       const data = await response.json();
       console.log('Samples data:', data);
-      
-      if (!response.ok) {
-        throw new Error(data.error || data.details || `HTTP error! status: ${response.status}`);
-      }
       
       setSamples(data.results || []);
       setBufferStats(data.bufferStats);
     } catch (err) {
       const errorMessage = err.message || 'Failed to fetch samples';
-      console.error('Error fetching samples:', err);
+      console.error('Error fetching samples:', {
+        message: errorMessage,
+        error: err,
+        stack: err.stack
+      });
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -106,15 +118,23 @@ export default function Home() {
       setLatestSample(null);
       
       console.log('Fetching random sample...');
-      const response = await fetch('/api/random');
+      const basePath = process.env.NODE_ENV === 'production' ? '/sample-server' : '';
+      const response = await fetch(`${basePath}/api/random`);
       console.log('Random response:', response.status);
       
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('Error response text:', text);
+        try {
+          const data = JSON.parse(text);
+          throw new Error(data.error || data.details || `HTTP error! status: ${response.status}`);
+        } catch (parseError) {
+          throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}...`);
+        }
+      }
+
       const data = await response.json();
       console.log('Random sample data:', data);
-      
-      if (!response.ok) {
-        throw new Error(data.error || data.details || `HTTP error! status: ${response.status}`);
-      }
       
       // Set the latest sample
       setLatestSample({
@@ -127,7 +147,11 @@ export default function Home() {
       setApiStatus({ loading: false, error: null });
     } catch (err) {
       const errorMessage = err.message || 'Failed to fetch random sample';
-      console.error('Error fetching random sample:', err);
+      console.error('Error fetching random sample:', {
+        message: errorMessage,
+        error: err,
+        stack: err.stack
+      });
       setApiStatus({ loading: false, error: errorMessage });
     }
   };

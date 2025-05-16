@@ -2,19 +2,23 @@ import fetch from 'node-fetch';
 import fs from 'fs-extra';
 import path from 'path';
 import { initDB, getDB, BUFFER_DIR, getPublicPath, cleanupBuffer } from '../../lib/db';
+import dotenv from 'dotenv';
 
 // Initialize database when module loads
 let dbInitPromise = initDB();
 
 async function getRandomSample() {
-  // Check for API key
-  if (!process.env.FREESOUND_API_KEY) {
+  // Load environment variables from .env.production
+  dotenv.config({ path: path.resolve(process.cwd(), '../.env.production') });
+  console.log('Freesound API key:', process.env.FREESOUND_API_KEY);
+  const apiKey = process.env.FREESOUND_API_KEY;
+  if (!apiKey) {
     throw new Error(
       'Freesound API key not found. Please set FREESOUND_API_KEY in your .env file'
     );
   }
 
-  
+
   const rnd = Math.round(Math.random() * 100000);
   console.log('Random number:', rnd);
 
@@ -26,10 +30,10 @@ async function getRandomSample() {
       `page_size=1&` +
       `fields=url,id,previews,description&` +
       `token=${process.env.FREESOUND_API_KEY}`, {
-        headers: {
-          'Accept': 'application/json'
-        }
+      headers: {
+        'Accept': 'application/json'
       }
+    }
     );
 
     if (!response.ok) {
@@ -54,7 +58,7 @@ async function getRandomSample() {
     };
   } catch (error) {
     console.error('Freesound API error:', error.message);
-    
+
     // Try to get a random sample from buffer instead
     console.log('Attempting to fall back to buffer sample...');
     const bufferSample = await getRandomBufferSample();
@@ -70,7 +74,7 @@ async function getRandomSample() {
 
 async function downloadSample(preview, id, description) {
   console.log(`Downloading sample ${id}...`);
-  
+
   const response = await fetch(preview);
   if (!response.ok) {
     throw new Error(`Failed to download sample: ${response.status} ${response.statusText}`);
@@ -79,16 +83,16 @@ async function downloadSample(preview, id, description) {
   // Get the sample size
   const arrayBuffer = await response.arrayBuffer();
   const sampleSize = arrayBuffer.byteLength;
-  
+
   // Clean up buffer if needed
   await cleanupBuffer(sampleSize);
-  
+
   const filePath = path.join(BUFFER_DIR, `${id}.mp3`);
   console.log(`Writing ${sampleSize} bytes to ${filePath}...`);
-  
+
   // Save the file
   await fs.writeFile(filePath, Buffer.from(arrayBuffer));
-  
+
   // Save to database
   const db = getDB();
   const metadata = {
@@ -98,35 +102,35 @@ async function downloadSample(preview, id, description) {
     downloaded: new Date().toISOString(),
     description: description || 'No description available'
   };
-  
+
   db.put(id, metadata);
   console.log(`Saved metadata to database:`, metadata);
-  
+
   return filePath;
 }
 
 async function getRandomBufferSample() {
   console.log(`Reading buffer directory: ${BUFFER_DIR}`);
   const files = await fs.readdir(BUFFER_DIR);
-  
+
   if (files.length === 0) {
     throw new Error(`No samples available in buffer. Use the Freesound API to download some samples first. 
     Make sure your FREESOUND_API_KEY is set in .env`);
   }
-  
+
   const randomFile = files[Math.floor(Math.random() * files.length)];
   const id = path.basename(randomFile, '.mp3');
-  
+
   console.log(`Selected random file: ${randomFile}`);
-  
+
   const db = getDB();
   const sampleInfo = db.get(id);
-  
+
   if (!sampleInfo) {
     console.error(`Database entry not found for sample ${id}`);
     throw new Error('Sample metadata not found in database');
   }
-  
+
   return {
     path: getPublicPath(sampleInfo.path),
     id: sampleInfo.id,
@@ -137,9 +141,17 @@ async function getRandomBufferSample() {
 
 export default async function handler(req, res) {
   // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:9001');
+  const isProd = process.env.NODE_ENV === 'production';
+  const allowedOrigin = isProd ? process.env.FRONTEND_BASE_URL : 'http://localhost:9001';
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'GET');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  console.log('API Environment:', {
+    NODE_ENV: process.env.NODE_ENV,
+    allowedOrigin,
+    currentUrl: req.url
+  });
 
   // Handle OPTIONS request for CORS preflight
   if (req.method === 'OPTIONS') {
@@ -152,7 +164,7 @@ export default async function handler(req, res) {
 
   try {
     console.log('Random API called');
-    
+
     // Wait for database to be ready
     await dbInitPromise;
 
@@ -170,7 +182,7 @@ export default async function handler(req, res) {
         fallbackReason: 'Used buffer sample'
       });
     }
-    
+
     // Try to download and save the Freesound sample
     try {
       const filePath = await downloadSample(preview, sample.id, sample.description);
@@ -191,10 +203,20 @@ export default async function handler(req, res) {
       });
     }
   } catch (error) {
-    console.error('Unexpected error:', error);
+    console.error('Unexpected error:', {
+      message: error.message,
+      stack: error.stack,
+      url: req.url,
+      method: req.method,
+      env: process.env.NODE_ENV,
+      dbPath: getDB().path
+    });
+
     return res.status(500).json({
       error: 'Server error',
-      details: error.message
+      details: error.message,
+      path: req.url,
+      env: process.env.NODE_ENV
     });
   }
 }
