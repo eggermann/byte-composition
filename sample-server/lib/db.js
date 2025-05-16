@@ -2,10 +2,14 @@ import path from 'path';
 import flatfile from 'flat-file-db';
 import fs from 'fs-extra';
 
+// Environment and path configuration
+const isProd = process.env.NODE_ENV === 'production';
+const BASE_PATH =  '';
+
 // Set up paths
-const DB_PATH = path.join(process.env.HOME || process.env.USERPROFILE, 'db', 'sample-server', 'samples.db');
-const PUBLIC_DIR = path.join(process.cwd(), 'public');
-const BUFFER_DIR = path.join(PUBLIC_DIR, 'buffer');
+const BASE_DIR = path.join(process.env.HOME || process.env.USERPROFILE, 'db', 'sample-server');
+const DB_PATH = path.join(BASE_DIR, 'samples.db');
+const BUFFER_DIR = path.join(BASE_DIR, 'buffer');
 
 // Buffer size limit (400MB in bytes)
 const BUFFER_SIZE_LIMIT = 400 * 1024 * 1024;
@@ -63,8 +67,8 @@ export function initDB() {
   if (db) return Promise.resolve(db);
 
   return new Promise((resolve, reject) => {
-    // Ensure directories exist
-    fs.ensureDirSync(PUBLIC_DIR);
+    // Ensure base and buffer directories exist
+    fs.ensureDirSync(BASE_DIR);
     fs.ensureDirSync(BUFFER_DIR);
     console.log('Buffer directory created at:', BUFFER_DIR);
     console.log('Database path:', DB_PATH);
@@ -96,8 +100,10 @@ export function initDB() {
 
 // Convert internal file path to public URL
 export function getPublicPath(filePath) {
-  const relativePath = path.relative(PUBLIC_DIR, filePath);
-  return '/' + relativePath.replace(/\\/g, '/');
+  // Get the filename from the full path
+  const filename = path.basename(filePath);
+  // Return the API route path with the filename, prefixed with BASE_PATH in production
+  return BASE_PATH + '/api/buffer/' + filename;
 }
 
 export function getDB() {

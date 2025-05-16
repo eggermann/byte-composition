@@ -12,11 +12,7 @@ module.exports = {
     return [
       {
         source: '/api/:path*',
-        destination: `${BASE_PATH}/api/:path*`
-      },
-      {
-        source: '/buffer/:path*',
-        destination: '/public/buffer/:path*'
+        destination: `/api/:path*`
       }
     ];
   },

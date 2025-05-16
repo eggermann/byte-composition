@@ -115,7 +115,7 @@ setup_supervisor() {
     local config="[program:sample-server]
 directory=${REMOTE_SERVER_PATH}
 command=/bin/bash -c 'cd ${REMOTE_SERVER_PATH} && source .env.production && export PORT=5673 && exec /opt/nodejs20/bin/npm start'
-environment=NODE_ENV=production,DB_PATH=${DB_DIR}/samples.db
+environment=NODE_ENV=production,DB_PATH=${DB_DIR}/samples.db,BUFFER_DIR=${DB_DIR}/buffer
 autostart=yes
 autorestart=yes
 startsecs=5
@@ -128,6 +128,7 @@ stopsignal=SIGTERM"
 
     sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "set -e && \
         mkdir -p $REMOTE_SERVER_PATH && \
+        mkdir -p ${DB_DIR}/buffer && \
         cd $REMOTE_SERVER_PATH && \
         mkdir -p ~/etc/services.d && \
         echo '$config' > ~/etc/services.d/sample-server.ini && \
