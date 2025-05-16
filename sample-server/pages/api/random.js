@@ -3,18 +3,23 @@ import fs from 'fs-extra';
 import path from 'path';
 import { initDB, getDB, BUFFER_DIR, getPublicPath, cleanupBuffer } from '../../lib/db';
 import dotenv from 'dotenv';
+dotenv.config({ path: path.resolve(process.cwd(), '../.env.production') });
 
 // Initialize database when module loads
 let dbInitPromise = initDB();
 
 async function getRandomSample() {
-  // Load environment variables from .env.production
-  dotenv.config({ path: path.resolve(process.cwd(), '../.env.production') });
-  console.log('Freesound API key:', process.env.FREESOUND_API_KEY);
-  const apiKey = process.env.FREESOUND_API_KEY;
-  if (!apiKey) {
+  const apiKey = process.env.FREESOUND_API_KEY?.trim();
+  console.log('API Key Check:', {
+    FREESOUND_API_KEY: process.env.FREESOUND_API_KEY,
+    exists: !!apiKey,
+    length: apiKey?.length,
+    isPlaceholder: apiKey === 'FREESOUND_API_KEY'
+  });
+
+  if (!apiKey || apiKey === 'FREESOUND_API_KEY') {
     throw new Error(
-      'Freesound API key not found. Please set FREESOUND_API_KEY in your .env file'
+      'Valid Freesound API key not found. Please set FREESOUND_API_KEY in your .env.production file with an actual API key'
     );
   }
 
@@ -29,12 +34,18 @@ async function getRandomSample() {
       `query=${rnd}&` +
       `page_size=1&` +
       `fields=url,id,previews,description&` +
-      `token=${process.env.FREESOUND_API_KEY}`, {
+      `token=${apiKey}`, {
       headers: {
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Authorization': `Token ${apiKey}`
       }
-    }
-    );
+    });
+
+    console.log('Freesound API request:', {
+      url: response.url,
+      status: response.status,
+      statusText: response.statusText
+    });
 
     if (!response.ok) {
       if (response.status === 401) {
