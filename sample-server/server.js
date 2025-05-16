@@ -1,18 +1,30 @@
 
 const path = require('path');
 const fs = require('fs');
+const express = require('express');
 require('next');
 const { startServer } = require('next/dist/server/lib/start-server');
-require('dotenv').config({ path: path.join(__dirname,  '../.env.production') });
 
 // Set essential environment variables
-process.env.NODE_ENV = 'production'
+process.env.NODE_ENV = 'production';
 
+// Load environment variables
+try {
+  require('dotenv').config({ path: path.join(__dirname, '../.env.production') });
+} catch (error) {
+  console.warn('Failed to load .env.production:', error.message);
+}
 
+// Set up public directories
+const publicDir = path.join(__dirname, 'public');
+const bufferDir = path.join(publicDir, 'buffer');
 
-// Use current directory for Next.js
-const dir = __dirname
-
+// Create directories if they don't exist
+[publicDir, bufferDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
 
 // Make sure commands gracefully respect termination signals (e.g. from Docker)
 // Allow the graceful termination to be manually configurable
@@ -48,22 +60,23 @@ let nextConfig = {
   swcMinify: true,
   poweredByHeader: false,
   experimental: {
-    optimizeCss: true,
-    critters: {
-      preload: 'media',
-      preloadFonts: true
-    },
-    outputFileTracingRoot: __dirname
+    optimizeCss: true
   },
-  dir: __dirname,
-  pagesDir: path.join(__dirname, 'pages'),
   output: 'standalone',
   configOrigin: 'next.config.js',
-  configFile: path.join(__dirname, 'next.config.js'),
-  future: {
-    strictPostcssConfiguration: true
-  }
+  configFile: path.join(__dirname, 'next.config.js')
 };
+
+// Load user config if exists
+try {
+  if (fs.existsSync(nextConfigPath)) {
+    const userConfig = require(nextConfigPath);
+    nextConfig = { ...nextConfig, ...userConfig };
+    console.log('Loaded next.config.js');
+  }
+} catch (error) {
+  console.warn('Error loading next.config.js:', error.message);
+}
 
 try {
   if (fs.existsSync(nextConfigPath)) {
@@ -92,19 +105,7 @@ if (
   keepAliveTimeout = undefined
 }
 
-// Check for required directories
-const buildDir = path.join(__dirname, '.next');
-const pagesDir = path.join(__dirname, 'pages');
-const requiredPaths = [buildDir, pagesDir];
-
-for (const p of requiredPaths) {
-  if (!fs.existsSync(p)) {
-    console.error(`Required path not found: ${p}`);
-    console.error('Please ensure you have run "npm run build" first');
-    process.exit(1);
-  }
-}
-
+// Initialize Next.js configuration
 const serverConfig = {
   dir: __dirname,
   dev: false,
@@ -112,30 +113,52 @@ const serverConfig = {
   port: currentPort,
   allowRetry: false,
   keepAliveTimeout,
-  customServer: true,
   conf: {
     ...nextConfig,
-    configFile: path.join(__dirname, 'next.config.js'),
     distDir: '.next',
-    serverRuntimeConfig: {},
-    publicRuntimeConfig: {},
-    dirs: {
-      pages: pagesDir,
-      app: __dirname,
-      root: __dirname
+    serverRuntimeConfig: {
+      ...nextConfig.serverRuntimeConfig,
+      PUBLIC_DIR: publicDir,
+      BUFFER_DIR: bufferDir
+    },
+    publicRuntimeConfig: {
+      ...nextConfig.publicRuntimeConfig
     }
   }
 };
 
-console.log('Starting server with config:', {
-  port: serverConfig.port,
-  hostname: serverConfig.hostname,
-  dir: serverConfig.dir,
-  pagesDir: serverConfig.conf.dirs.pages
-});
+// Initialize Next.js app
+const dev = false;
+const nextApp = require('next')({ dev, dir: __dirname });
+const handle = nextApp.getRequestHandler();
 
-startServer(serverConfig).catch((err) => {
-  console.error('Server failed to start:', err);
-  console.error('Error details:', err.message);
-  process.exit(1);
-});
+nextApp.prepare()
+  .then(() => {
+    // Create express server for handling static files
+    const server = express();
+
+    // Serve buffer files with correct MIME type
+    server.use('/buffer', express.static(bufferDir, {
+      setHeaders: (res) => {
+        res.set('Content-Type', 'audio/mpeg');
+        res.set('Accept-Ranges', 'bytes');
+        res.set('Access-Control-Allow-Origin', process.env.FRONTEND_BASE_URL || 'http://localhost:9001');
+      }
+    }));
+
+    // Let Next.js handle everything else
+    server.all('*', (req, res) => {
+      return handle(req, res);
+    });
+
+    // Start the server
+    server.listen(currentPort, hostname, (err) => {
+      if (err) throw err;
+      console.log(`> Ready on http://${hostname}:${currentPort}`);
+      console.log('> Serving audio files from:', bufferDir);
+    });
+  })
+  .catch((err) => {
+    console.error('Error starting server:', err);
+    process.exit(1);
+  });

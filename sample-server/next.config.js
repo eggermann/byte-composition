@@ -15,6 +15,16 @@ module.exports = {
   swcMinify: true,
   poweredByHeader: false,
 
+  // Configure static file serving
+  async rewrites() {
+    return [
+      {
+        source: '/buffer/:path*',
+        destination: '/public/buffer/:path*'
+      }
+    ];
+  },
+
   // Configure static optimization
   experimental: {
     optimizeCss: true,
@@ -73,7 +83,7 @@ module.exports = {
   },
 
   // Output configuration for deployment
-  output: isProd ? 'standalone' : undefined,
+  output: 'standalone',  // Changed back to standalone for custom server
 
   // Enable experimental features for production optimization
   experimental: {
