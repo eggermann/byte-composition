@@ -152,15 +152,13 @@ async function getRandomBufferSample() {
 
 export default async function handler(req, res) {
   // Enable CORS
-  const isProd = process.env.NODE_ENV === 'production';
-  const allowedOrigin = isProd ? process.env.FRONTEND_BASE_URL : 'http://localhost:9001';
-  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  // Enable CORS for all origins
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   console.log('API Environment:', {
     NODE_ENV: process.env.NODE_ENV,
-    allowedOrigin,
     currentUrl: req.url
   });
 

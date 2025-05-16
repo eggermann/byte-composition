@@ -27,9 +27,17 @@
 const API_KEY = window.ENV?.FREESOUND_API_KEY;
 const SAMPLE_SERVER_URL = window.ENV?.SAMPLE_SERVER_URL;
 const SAMPLE_SERVER_API = `${SAMPLE_SERVER_URL}/api`;
+console.log('SAMPLE_SERVER_URL:', SAMPLE_SERVER_URL);   
+console.log('SAMPLE_SERVER_API:', SAMPLE_SERVER_API);
+
+
 
 if (!SAMPLE_SERVER_URL) {
-    console.warn('SAMPLE_SERVER_URL not configured in environment');
+    console.warn('SAMPLE_SERVER_URL not configured in window.ENV');
+}
+
+if (!API_KEY) {
+    console.warn('FREESOUND_API_KEY not configured in window.ENV');
 }
 
 // Default config
@@ -71,6 +79,15 @@ async function getRandomSample() {
             }
             const data = await response.json();
             // Transform relative path to absolute URL when using sample server
+         
+         
+         
+         console.log(
+'data',data
+         )
+
+
+
             const samplePath = data.path.startsWith('http')
                 ? data.path
                 : data.path.startsWith('/')
@@ -85,23 +102,33 @@ async function getRandomSample() {
             };
         } catch (error) {
             console.warn('Sample server failed, falling back to Freesound:', error);
-            return getRandomFromFreesound();
+       //     return getRandomFromFreesound();
         }
     } else {
-        return getRandomFromFreesound();
+       // return getRandomFromFreesound();
     }
 }
 
 // Direct Freesound API call
 async function getRandomFromFreesound() {
+    if (!API_KEY) {
+        throw new Error('Freesound API key not configured');
+    }
+
     const rnd = Math.round(Math.random() * 100000);
     console.log('Random number:', rnd);
 
     const response = await fetch(`https://freesound.org/apiv2/search/text/?query=${rnd}&page_size=1&fields=url,id,previews,description&token=${API_KEY}`);
+    
+    if (!response.ok) {
+        throw new Error(`Freesound API error: ${response.status} ${response.statusText}`);
+    }
+
     const data = await response.json();
 
     if (!data.count) {
-        return getRandomFromFreesound(); // Retry if no samples found
+        console.log('No samples found, retrying with different query...');
+        return getRandomFromFreesound(); // Retry only if no samples found
     }
 
     return data.results[0];
