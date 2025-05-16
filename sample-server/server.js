@@ -1,4 +1,3 @@
-
 const path = require('path');
 const fs = require('fs');
 const express = require('express');
@@ -10,7 +9,7 @@ process.env.NODE_ENV = 'production';
 
 // Load environment variables
 try {
-  require('dotenv').config({ path: path.join(__dirname, '../.env.production') });
+  require('dotenv').config({ path: path.join(__dirname, '.env.production') });
 } catch (error) {
   console.warn('Failed to load .env.production:', error.message);
 }
@@ -34,11 +33,11 @@ if (!process.env.NEXT_MANUAL_SIG_HANDLE) {
 }
 
 const currentPort = parseInt(process.env.PORT, 10) || 3000
-const hostname = process.env.HOSTNAME || '0.0.0.0'
+const hostname = '0.0.0.0'
 
 let keepAliveTimeout = parseInt(process.env.KEEP_ALIVE_TIMEOUT, 10)
 const nextConfigPath = path.resolve(__dirname, './next.config.js');
-console.log('Next.js config path:', process.env.PORT);
+console.log('Next.js config path:', nextConfigPath);
 
 
 // Default Next.js configuration
@@ -67,16 +66,6 @@ let nextConfig = {
   configFile: path.join(__dirname, 'next.config.js')
 };
 
-// Load user config if exists
-try {
-  if (fs.existsSync(nextConfigPath)) {
-    const userConfig = require(nextConfigPath);
-    nextConfig = { ...nextConfig, ...userConfig };
-    console.log('Loaded next.config.js');
-  }
-} catch (error) {
-  console.warn('Error loading next.config.js:', error.message);
-}
 
 try {
   if (fs.existsSync(nextConfigPath)) {
@@ -132,8 +121,10 @@ const dev = false;
 const nextApp = require('next')({ dev, dir: __dirname });
 const handle = nextApp.getRequestHandler();
 
+console.log('Preparing Next.js app...');
 nextApp.prepare()
   .then(() => {
+    console.log('Next.js app is prepared, starting Express server...');
     // Create express server for handling static files
     const server = express();
 
@@ -146,14 +137,20 @@ nextApp.prepare()
       }
     }));
 
+
     // Let Next.js handle everything else
     server.all('*', (req, res) => {
       return handle(req, res);
     });
 
+
     // Start the server
     server.listen(currentPort, hostname, (err) => {
-      if (err) throw err;
+      if (err) {
+        console.error('Fehler beim Starten des Servers:', err);
+        process.exit(1);
+      }
+      
       console.log(`> Ready on http://${hostname}:${currentPort}`);
       console.log('> Serving audio files from:', bufferDir);
     });

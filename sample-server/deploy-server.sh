@@ -58,7 +58,7 @@ prepare_deployment() {
         --exclude='.gitignore' \
         --exclude='public/buffer' \
         --exclude='package-lock.json' \
-        sample-server/ "${DEPLOY_DIR}/"
+        ./ "${DEPLOY_DIR}/"
 }
 
 deploy_to_remote() {
@@ -114,8 +114,7 @@ setup_supervisor() {
 
     local config="[program:sample-server]
 directory=${REMOTE_SERVER_PATH}
-command=/opt/nodejs20/bin/node server.js
-environment=PORT=\"${PORT}\",DB_PATH=\"${DB_DIR}/samples.db\",NODE_ENV=\"production\",NODE_VERSION=\"20\",PATH=\"/opt/nodejs20/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin\"${env_vars}
+command=/usr/bin/env PORT=${PORT} NODE_ENV=production /opt/nodejs20/bin/node server.js
 autostart=yes
 autorestart=yes
 startsecs=5
@@ -129,8 +128,8 @@ stopsignal=SIGTERM"
     sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "set -e && \
         mkdir -p $REMOTE_SERVER_PATH && \
         cd $REMOTE_SERVER_PATH && \
-        mkdir -p ~/service && \
-        echo '$config' > ~/service/sample-server.ini && \
+        mkdir -p ~/etc/services.d && \
+        echo '$config' > ~/etc/services.d/sample-server.ini && \
         supervisorctl reread && \
         supervisorctl update && \
         sleep 5 && \
