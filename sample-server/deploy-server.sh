@@ -91,12 +91,11 @@ build_on_remote() {
     sshpass -p "$SSH_PASSWORD" scp .env.production "$SSH_USER@$SSH_HOST:$REMOTE_SERVER_PATH/"
 
     # Build the application
-    # Build and prepare the application
     sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "cd $REMOTE_SERVER_PATH && \
         rm -rf node_modules .next package-lock.json && \
         npm install --no-package-lock && \
         source .env.production && \
-        npm run build"
+        NODE_ENV=production PORT=5673 npm run build"
 }
 
 setup_supervisor() {
@@ -115,7 +114,8 @@ setup_supervisor() {
 
     local config="[program:sample-server]
 directory=${REMOTE_SERVER_PATH}
-command=bash -c 'source .env.production && PORT=5673 NODE_ENV=production DB_PATH=${DB_DIR}/samples.db /opt/nodejs20/bin/npm start'
+command=/bin/bash -c 'cd ${REMOTE_SERVER_PATH} && source .env.production && export PORT=5673 && exec /opt/nodejs20/bin/npm start'
+environment=NODE_ENV=production,DB_PATH=${DB_DIR}/samples.db
 autostart=yes
 autorestart=yes
 startsecs=5
