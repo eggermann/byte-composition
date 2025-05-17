@@ -27,7 +27,7 @@
 const API_KEY = window.ENV?.FREESOUND_API_KEY;
 const SAMPLE_SERVER_URL = window.ENV?.SAMPLE_SERVER_URL;
 const SAMPLE_SERVER_API = `${SAMPLE_SERVER_URL}/api`;
-console.log('SAMPLE_SERVER_URL:', SAMPLE_SERVER_URL);   
+console.log('SAMPLE_SERVER_URL:', SAMPLE_SERVER_URL);
 console.log('SAMPLE_SERVER_API:', SAMPLE_SERVER_API);
 
 
@@ -79,12 +79,12 @@ async function getRandomSample() {
             }
             const data = await response.json();
             // Transform relative path to absolute URL when using sample server
-         
-         
-         
-         console.log(
-'data',data
-         )
+
+
+
+            console.log(
+                'data', data
+            )
 
 
 
@@ -102,10 +102,10 @@ async function getRandomSample() {
             };
         } catch (error) {
             console.warn('Sample server failed, falling back to Freesound:', error);
-       //     return getRandomFromFreesound();
+            return getRandomFromFreesound();
         }
     } else {
-       // return getRandomFromFreesound();
+        return getRandomFromFreesound();
     }
 }
 
@@ -118,8 +118,9 @@ async function getRandomFromFreesound() {
     const rnd = Math.round(Math.random() * 100000);
     console.log('Random number:', rnd);
 
-    const response = await fetch(`https://freesound.org/apiv2/search/text/?query=${rnd}&page_size=1&fields=url,id,previews,description&token=${API_KEY}`);
-    
+    const response = await fetch(`https://freesound.org/apiv2/search/text/?query=${rnd}'+
+        '&page_size=1&fields=url,id,previews,description&token=${API_KEY}`);
+
     if (!response.ok) {
         throw new Error(`Freesound API error: ${response.status} ${response.statusText}`);
     }
@@ -154,7 +155,7 @@ async function load() {
     ]);
 
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    
+
     const audioBuffers = await Promise.all(rndSamples.map(async (sample) => {
         const preview = sample.previews['preview-hq-mp3'];
         const url = preview;
@@ -185,8 +186,8 @@ async function startFromFiles() {
 // Export functions
 export default {
     load,
-    setSampleInfos,
-    startFromFiles,
+   // setSampleInfos,
+   // startFromFiles,
     getRandomSample,
     configure
 };
