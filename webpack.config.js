@@ -17,6 +17,7 @@ const envKeys = Object.keys(envConfig).reduce((prev, next) => {
 }, {});
 
 module.exports = {
+  entry: './frontend/index.js',
   mode: env === 'production' ? 'production' : 'development',
   optimization: {
     moduleIds: 'deterministic',
@@ -32,7 +33,7 @@ module.exports = {
     },
   },
   output: {
-    publicPath: '/',
+    publicPath: './',
     path: path.resolve(__dirname, 'dist'),
     filename: env === 'production' ? '[name].[contenthash].js' : '[name].js',
     globalObject: 'self',
