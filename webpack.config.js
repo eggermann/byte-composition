@@ -50,7 +50,7 @@ module.exports = {
       percentBy: 'entries'
     }),
     new HtmlWebpackPlugin({
-      template: 'src/index.html',
+      template: 'frontend/index.html',
       minify: env === 'production' ? {
         removeComments: true,
         collapseWhitespace: true,
@@ -78,7 +78,7 @@ module.exports = {
     rules: [{
       test: /\.jsx?$/, // More specific test for .js and .jsx files
       // exclude: /\.css$/, // Remove exclude, rely on specific test
-      include: [path.resolve(__dirname, 'src'), path.resolve(__dirname, 'node_modules/tone')], // Keep include for src and tone
+      include: [path.resolve(__dirname, 'frontend'), path.resolve(__dirname, 'node_modules/tone')], // Keep include for frontend and tone
       loader: 'babel-loader'
     },
     {
