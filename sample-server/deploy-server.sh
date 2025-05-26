@@ -1,9 +1,103 @@
-#!/bin/bash
+build_on_remote() {
+    echo "Building Next.js application on remote server..."
 
-# Enable error handling
-set -e
+    # Get parent directory for DB_PATH
+    local DB_DIR
+    DB_DIR=$(dirname "$REMOTE_SERVER_PATH")
 
-# Functions
+    # Stop the supervisor service if running
+    sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "
+        if command -v supervisorctl &> /dev/null; then
+            echo 'Stopping supervisor service...'
+            supervisorctl stop sample-server || true
+            sleep 2
+            echo 'Service stopped'
+        else
+            echo 'Supervisor not found, continuing...'
+        fi"
+
+    # Copy .env.production to remote server
+    echo "Copying .env.production to remote server..."
+    sshpass -p "$SSH_PASSWORD" scp .env.production "$SSH_USER@$SSH_HOST:$REMOTE_SERVER_PATH/"
+
+    # Build the application
+    sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "
+        cd $REMOTE_SERVER_PATH && \
+        rm -rf node_modules .next package-lock.json && \
+        npm install --no-package-lock && \
+        source .env.production && \
+        NODE_ENV=production PORT=${PORT} npm run build"
+}
+
+setup_supervisor() {
+    echo "Setting up supervisor service..."
+
+    # Parent directory for DB and buffer
+    local DB_DIR
+    DB_DIR=$(dirname "$REMOTE_SERVER_PATH")
+
+    # ---------- build Supervisor config locally ----------
+    local tmp_ini
+    tmp_ini=$(mktemp)
+
+    cat > "$tmp_ini" <<EOF
+[program:sample-server]
+directory=${REMOTE_SERVER_PATH}
+command=/opt/nodejs20/bin/npm start
+environment=PORT="${PORT}",NODE_ENV="production",DB_PATH="${DB_DIR}/samples.db",BUFFER_DIR="${DB_DIR}/buffer"
+autostart=yes
+autorestart=yes
+startsecs=5
+startretries=3
+stdout_logfile=${REMOTE_SERVER_PATH}/app.log
+stderr_logfile=${REMOTE_SERVER_PATH}/error.log
+stopasgroup=true
+killasgroup=true
+stopsignal=SIGTERM
+#v1
+EOF
+
+    # Debug: Print the content of the temporary file
+    echo "Debug: Content of tmp_ini before upload:"
+    cat "$tmp_ini"
+
+    # Validate that the temporary file is not empty
+    if [ ! -s "$tmp_ini" ]; then
+        echo "Error: Temporary supervisor configuration file is empty. Aborting."
+        rm -f "$tmp_ini"
+        exit 1
+    fi
+
+    # Validate that the temporary file is not empty
+    if [ ! -s "$tmp_ini" ]; then
+        echo "Error: Temporary supervisor configuration file is empty. Aborting."
+        rm -f "$tmp_ini"
+        exit 1
+    fi
+
+    # ---------- upload config & ensure directories ----------
+    sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "
+        mkdir -p '${DB_DIR}/buffer' || \
+        { echo 'Warning: Could not create buffer directory. Please ensure the directory exists or adjust the script.'; exit 1; }"
+
+    # Debug: Upload the file and verify its content on the server
+    sshpass -p "$SSH_PASSWORD" scp "$tmp_ini" \
+        "${SSH_USER}@${SSH_HOST}:/home/${SSH_USER}/etc/services.d/sample-server.ini" && \
+    sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "cat /home/${SSH_USER}/etc/services.d/sample-server.ini || echo 'Debug: File is empty on the server'"
+
+    rm -f "$tmp_ini"
+
+    # ---------- enable / restart service ----------
+    sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "
+        supervisorctl reread &&
+        supervisorctl update &&
+        (supervisorctl restart sample-server || supervisorctl start sample-server) &&
+        supervisorctl status sample-server &&
+        tail -n 20 '${REMOTE_SERVER_PATH}/error.log' || true"
+}
+
+
+# Utility functions for deployment process
 check_env() {
     if [ ! -f .env.production ]; then
         echo "Error: .env.production file not found"
@@ -29,7 +123,6 @@ check_env() {
         exit 1
     fi
 
-    # Validate PORT is a number
     if ! [[ "$PORT" =~ ^[0-9]+$ ]]; then
         echo "Error: PORT must be a number"
         exit 1
@@ -38,9 +131,7 @@ check_env() {
 
 check_dependencies() {
     if ! command -v sshpass &> /dev/null; then
-        echo "Error: sshpass is not installed. Please install it first:"
-        echo "  macOS: brew install esolitos/ipa/sshpass"
-        echo "  Linux: sudo apt-get install sshpass"
+        echo "Error: sshpass is not installed."
         exit 1
     fi
 }
@@ -49,7 +140,7 @@ prepare_deployment() {
     echo "Preparing deployment directory... ${DEPLOY_DIR}"
     rm -rf "${DEPLOY_DIR}"
     mkdir -p "${DEPLOY_DIR}"
-    
+
     echo "Copying source files..."
     rsync -av --progress \
         --exclude='node_modules' \
@@ -70,76 +161,6 @@ deploy_to_remote() {
     sshpass -p "$SSH_PASSWORD" rsync -avz --progress "${DEPLOY_DIR}/" "$SSH_USER@$SSH_HOST:$REMOTE_SERVER_PATH/"
 }
 
-build_on_remote() {
-    echo "Building Next.js application on remote server..."
-    # Get parent directory for DB_PATH
-    local DB_DIR=$(dirname "$REMOTE_SERVER_PATH")
-
-    # Stop the supervisor service if running
-    sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "
-        if command -v supervisorctl &> /dev/null; then
-            echo 'Stopping supervisor service...'
-            supervisorctl stop sample-server || true
-            sleep 2
-            echo 'Service stopped'
-        else
-            echo 'Supervisor not found, continuing...'
-        fi"
-
-    # Copy .env.production to remote server
-    echo "Copying .env.production to remote server..."
-    sshpass -p "$SSH_PASSWORD" scp .env.production "$SSH_USER@$SSH_HOST:$REMOTE_SERVER_PATH/"
-
-    # Build the application
-    sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "cd $REMOTE_SERVER_PATH && \
-        rm -rf node_modules .next package-lock.json && \
-        npm install --no-package-lock && \
-        source .env.production && \
-        NODE_ENV=production PORT=5673 npm run build"
-}
-
-setup_supervisor() {
-    echo "Setting up supervisor service..."
-    # Get parent directory for DB_PATH
-    local DB_DIR=$(dirname "$REMOTE_SERVER_PATH")
-    
-    # Read variables from .env.production
-    local env_vars=""
-    while IFS='=' read -r key value; do
-        if [[ ! -z "$key" && ! "$key" =~ ^# ]]; then
-            env_vars="${env_vars},${key}=\"${value}\""
-        fi
-    done < .env.production
-    env_vars=$(echo "$env_vars" | sed 's/^,//')
-
-    local config="[program:sample-server]
-directory=${REMOTE_SERVER_PATH}
-command=/bin/bash -c 'cd ${REMOTE_SERVER_PATH} && source .env.production && export PORT=5673 && exec /opt/nodejs20/bin/npm start'
-environment=NODE_ENV=production,DB_PATH=${DB_DIR}/samples.db,BUFFER_DIR=${DB_DIR}/buffer
-autostart=yes
-autorestart=yes
-startsecs=5
-startretries=3
-stdout_logfile=${REMOTE_SERVER_PATH}/app.log
-stderr_logfile=${REMOTE_SERVER_PATH}/error.log
-stopasgroup=true
-killasgroup=true
-stopsignal=SIGTERM"
-
-    sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "set -e && \
-        mkdir -p $REMOTE_SERVER_PATH && \
-        mkdir -p ${DB_DIR}/buffer && \
-        cd $REMOTE_SERVER_PATH && \
-        mkdir -p ~/etc/services.d && \
-        echo '$config' > ~/etc/services.d/sample-server.ini && \
-        supervisorctl reread && \
-        supervisorctl update && \
-        sleep 5 && \
-        supervisorctl start sample-server && \
-        supervisorctl status sample-server && \
-        tail -n 20 ${REMOTE_SERVER_PATH}/error.log || true"
-}
-
 verify_deployment() {
     echo "Verifying deployment..."
     sshpass -p "$SSH_PASSWORD" ssh "$SSH_USER@$SSH_HOST" "
@@ -156,10 +177,9 @@ cleanup() {
     rm -rf "${DEPLOY_DIR}"
 }
 
-# Main deployment process
 main() {
     echo "Starting server deployment process..."
-    
+
     check_env
     check_dependencies
     prepare_deployment
@@ -170,12 +190,10 @@ main() {
     cleanup
 
     echo "Server deployment completed."
-    echo "Your application should be available at: https://${SSH_USER}.uber.space:${PORT}"
-    echo "Check the logs above for any startup issues"
-    echo "Database will be stored at: ${DB_DIR}/samples.db"
+    echo "Your application should be available at: https://${SSH_USER}.uber.space/"
+    echo "Database will be stored at: ${REMOTE_SERVER_PATH}/samples.db"
 }
 
-# Allow running individual functions for testing
 if [ "$1" ]; then
     $1
 else

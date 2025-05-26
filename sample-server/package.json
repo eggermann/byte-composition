@@ -2,11 +2,11 @@
   "name": "sample-server",
   "version": "1.0.0",
   "description": "Next.js server for managing audio samples with flat-db",
-  "scripts": {
-    "dev": "next dev -p ${PORT:-5673}",
-    "build": "next build",
-    "start": "next start -p ${PORT:-5673}"
-  },
+ "scripts": {
+  "dev": "next dev -p ${PORT:-5673}",
+  "build": "next build",
+  "start": "next start -H 0.0.0.0 -p ${PORT:-5673}"
+},
   "dependencies": {
     "critters": "0.0.23",
     "flat-file-db": "1.0.0",

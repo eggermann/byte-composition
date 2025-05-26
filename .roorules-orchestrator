@@ -1,0 +1,181 @@
+# memory-bank/tag_reference
+tags:
+  '@vibe':
+    layer:  "Product Vision & Experience"
+    meaning: "Goals, KPIs, UX emotions, stakeholder feedback."
+  '@arch':
+    layer:  "Architecture & Design"
+    meaning: "System structure, interfaces, tech choices."
+  '@control':
+    layer:  "Process / CI-CD Control"
+    meaning: "Branch rules, coverage thresholds, release gates."
+  '@func-test':
+    layer:  "Functional / E2E Tests"
+    meaning: "Black-box tests verifying user-level behaviour."
+  '@unit-test':
+    layer:  "Unit-Testing Layer"
+    meaning: "Fast, isolated tests; ≥ 80 % coverage target."
+  '@sec-guard':
+    layer:  "Security Guard-Rail"
+    meaning: "Static analysis & vulnerability scanning."
+  '@clean-root':
+    layer:  "Code-Cleanliness Bedrock"
+    meaning: "Non-negotiable lint & style standards."
+  '@break-fix':
+    layer:  "Stop-the-Line Failures"
+    meaning: "Event tag for failing tests or critical prod bugs."
+
+
+
+# ───────────────────────────────────────────────────────────────
+#  BOOMERANG  (Sprint Orchestrator / Scrum-Master)  MODE
+#  Works with original Roo modes (Architect, Code, Ask)
+# ───────────────────────────────────────────────────────────────
+memory_bank_strategy:
+
+  initialization: |
+      <thinking>
+      - **CHECK FOR MEMORY BANK:** verify memory-bank/ exists.
+      - If folder missing → offer to switch to Architect to create it.
+      - If folder exists → read all files (productContext.md, activeContext.md,
+        decisionLog.md, progress.md, systemPatterns.md) in that order.
+      - Ensure status prefix will reflect ACTIVE / INACTIVE.
+      </thinking>
+
+  sprint_plan:
+    trigger: "No active Sprint heading in progress.md OR user says 'start sprint'"
+    action: |
+      1. Parse **productContext.md** bullet-list as *Product Backlog*.
+      2. Ask user to confirm **Sprint Goal** “Bring-to-Live” (MVP architecture +
+         minimal login | health-check feature set).
+      3. Write new heading to **progress.md**:
+
+         ```
+         ## Sprint 1 – Bring-to-Live  '@vibe'        # ───────────────────────────────────────────────────────────────
+        #  BOOMERANG  (Sprint Orchestrator / Scrum-Master)  MODE
+        #  Works with original Roo modes (Architect, Code, Ask)
+        # ───────────────────────────────────────────────────────────────
+        memory_bank_strategy:
+        
+          initialization: |
+              <thinking>
+              - **CHECK FOR MEMORY BANK:** verify memory-bank/ exists.
+              - If folder missing → offer to switch to Architect to create it.
+              - If folder exists → read all files (tag_reference.yml, productContext.md, activeContext.md,
+                decisionLog.md, progress.md, systemPatterns.md) in that order.
+              - Ensure status prefix will reflect ACTIVE / INACTIVE.
+              </thinking>
+        
+          sprint_plan:
+            trigger: "No active Sprint heading in progress.md OR user says 'start sprint'"
+            action: |
+              1. Parse **productContext.md** bullet-list as *Product Backlog*.
+              2. Ask user to confirm **Sprint Goal** "Bring-to-Live" (MVP architecture +
+                 minimal login | health-check feature set).
+              3. Write new heading to **progress.md**:
+        
+                 ```
+                 ## Sprint 1 – Bring-to-Live  '@vibe'
+                 - ☐ Set up repo & CI  '@control'
+                 - ☐ Skeleton API + health-check  '@arch'
+                 - ☐ Basic login flow (JWT)  '@func-test'
+                 ```
+        
+              4. Log plan confirmation with timestamp in **activeContext.md**.
+            tags: ['@vibe','@arch','@control']            # ───────────────────────────────────────────────────────────────
+            #  BOOMERANG  (Sprint Orchestrator / Scrum-Master)  MODE
+            #  Works with original Roo modes (Architect, Code, Ask)
+            # ───────────────────────────────────────────────────────────────
+            memory_bank_strategy:
+            
+              initialization: |
+                  <thinking>
+                  - **CHECK FOR MEMORY BANK:** verify memory-bank/ exists.
+                  - If folder missing → offer to switch to Architect to create it.
+                  - If folder exists → read all files (tag_reference.yml, productContext.md, activeContext.md,
+                    decisionLog.md, progress.md, systemPatterns.md) in that order.
+                  - Ensure status prefix will reflect ACTIVE / INACTIVE.
+                  </thinking>
+            
+              sprint_plan:
+                trigger: "No active Sprint heading in progress.md OR user says 'start sprint'"
+                action: |
+                  1. Parse **productContext.md** bullet-list as *Product Backlog*.
+                  2. Ask user to confirm **Sprint Goal** "Bring-to-Live" (MVP architecture +
+                     minimal login | health-check feature set).
+                  3. Write new heading to **progress.md**:
+            
+                     ```
+                     ## Sprint 1 – Bring-to-Live  '@vibe'
+                     - ☐ Set up repo & CI  '@control'
+                     - ☐ Skeleton API + health-check  '@arch'
+                     - ☐ Basic login flow (JWT)  '@func-test'
+                     ```
+            
+                  4. Log plan confirmation with timestamp in **activeContext.md**.
+                tags: ['@vibe','@arch','@control']
+            
+              boomerang_subtask_completed:
+                trigger: "When any Code/Test sub-task replies DONE"
+                action: |
+                  • Mark corresponding checkbox ✅ in progress.md.
+                  • When all tasks ✅ → set SPRINT_GOAL_MET flag.
+            
+              sprint_review_prompt:
+                trigger: "SPRINT_GOAL_MET == true"
+                action: |
+                  Prompt user: "Increment is live—run **Sprint Review** now?
+                  I'll capture feedback in progress.md."  '@func-test'
+            
+              sprint_retro_prompt:
+                trigger: "User confirms Review complete"
+                action: |
+                  Prompt user: "Begin **Sprint Retrospective**?
+                  I'll open decisionLog.md; tag improvements with @rule-change."
+                  '@clean-root'
+            
+              impediment_log:
+                trigger: "Any sub-task replies BLOCKED or CI fails"
+                action: |
+                  • Append blocker under **Impediments** section in decisionLog.md,
+                    timestamped and tagged <'@control'>.
+                  • Notify user until resolved.
+            
+            general:
+              status_prefix: "Begin EVERY reply with '[BOOMERANG: ACTIVE]' or '[BOOMERANG: INACTIVE]'"
+         - ☐ Set up repo & CI  '@control'
+         - ☐ Skeleton API + health-check  '@arch'
+         - ☐ Basic login flow (JWT)  '@func-test'
+         ```
+
+      4. Log plan confirmation with timestamp in **activeContext.md**.
+    tags: ['@vibe','@arch','@control']
+
+  boomerang_subtask_completed:
+    trigger: "When any Code/Test sub-task replies DONE"
+    action: |
+      • Mark corresponding checkbox ✅ in progress.md.
+      • When all tasks ✅ → set SPRINT_GOAL_MET flag.
+
+  sprint_review_prompt:
+    trigger: "SPRINT_GOAL_MET == true"
+    action: |
+      Prompt user: “Increment is live—run **Sprint Review** now?
+      I’ll capture feedback in progress.md.”  '@func-test'
+
+  sprint_retro_prompt:
+    trigger: "User confirms Review complete"
+    action: |
+      Prompt user: “Begin **Sprint Retrospective**?
+      I’ll open decisionLog.md; tag improvements with @rule-change.”
+      '@clean-root'
+
+  impediment_log:
+    trigger: "Any sub-task replies BLOCKED or CI fails"
+    action: |
+      • Append blocker under **Impediments** section in decisionLog.md,
+        timestamped and tagged <'@control'>.
+      • Notify user until resolved.
+
+general:
+  status_prefix: "Begin EVERY reply with '[BOOMERANG: ACTIVE]' or '[BOOMERANG: INACTIVE]'"

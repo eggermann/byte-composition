@@ -1,33 +1,28 @@
 const isProd = process.env.NODE_ENV === 'production';
-const BASE_PATH = isProd ? '/sample-server' : '';
-const allowedOrigin = '*';
 
 module.exports = {
   reactStrictMode: false,
   poweredByHeader: false,
   distDir: '.next',
-  basePath: BASE_PATH,
-  assetPrefix: isProd ? 'https://eggman2.uber.space/sample-server' : '',
 
+  // Serve everything under /sample-server in production
+  basePath: isProd ? '/sample-server' : '',
+  assetPrefix: isProd ? '/sample-server/' : '',
+
+  crossOrigin: 'anonymous',
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `/api/:path*`
-      }
-    ];
+    return [{ source: '/api/:path*', destination: '/api/:path*' }];
   },
-
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: '/api/:path*',
         headers: [
-          { key: 'Access-Control-Allow-Origin', value: allowedOrigin },
-          { key: 'Access-Control-Allow-Methods', value: 'GET' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type' }
-        ]
-      }
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,DELETE,OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type,Authorization' },
+        ],
+      },
     ];
-  }
+  },
 };
