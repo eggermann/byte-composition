@@ -6,17 +6,20 @@ const dotenv = require('dotenv');
 // Load environment variables based on NODE_ENV
 const env = process.env.NODE_ENV || 'development';
 const envFile = env === 'production' ? '.env.production' : '.env.development';
-const envConfig = dotenv.config({ path: envFile }).parsed;
+const envConfig = dotenv.config({ path: envFile }).parsed || {};
 
 console.log(`Using ${envFile} configuration...`);
+console.log('Environment config loaded:', envConfig);
 
 // Create a new object with stringified values
-const envKeys = Object.keys(envConfig).reduce((prev, next) => {
+const envKeys = Object.keys(envConfig || {}).reduce((prev, next) => {
   prev[`process.env.${next}`] = JSON.stringify(envConfig[next]);
   return prev;
 }, {});
 
+
 module.exports = {
+  devtool: env === 'production' ? 'source-map' : 'eval-source-map',
   entry: './frontend/index.js',
   mode: env === 'production' ? 'production' : 'development',
   optimization: {
@@ -33,7 +36,7 @@ module.exports = {
     },
   },
   output: {
-    publicPath: './',
+    publicPath: '/',
     path: path.resolve(__dirname, 'dist'),
     filename: env === 'production' ? '[name].[contenthash].js' : '[name].js',
     globalObject: 'self',
@@ -51,7 +54,10 @@ module.exports = {
       percentBy: 'entries'
     }),
     new HtmlWebpackPlugin({
-      template: 'frontend/index.html',
+      filename: 'index.html',
+      template: path.resolve(__dirname, 'frontend/index.html'),
+      inject: 'body',
+      scriptLoading: 'defer',
       minify: env === 'production' ? {
         removeComments: true,
         collapseWhitespace: true,
@@ -61,19 +67,39 @@ module.exports = {
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify(env),
       'window.ENV': JSON.stringify({
-        FREESOUND_API_KEY: envConfig.FREESOUND_API_KEY,
-        SAMPLE_SERVER_URL: envConfig.SAMPLE_SERVER_URL,
-        FRONTEND_BASE_URL: envConfig.FRONTEND_BASE_URL
+        FREESOUND_API_KEY: envConfig?.FREESOUND_API_KEY || '',
+        SAMPLE_SERVER_URL: envConfig?.SAMPLE_SERVER_URL || 'http://localhost:3002/api',
+        FRONTEND_BASE_URL: envConfig?.FRONTEND_BASE_URL || 'http://localhost:9001'
       })
-    })
+    }),
   ],
   devServer: {
+    historyApiFallback: true,
     static: {
-      directory: path.join(__dirname, 'dist')
+      directory: path.join(__dirname, 'dist'),
+      publicPath: '/',
+      serveIndex: true
+    },
+    watchFiles: {
+      paths: ['frontend/**/*'],
+      options: {
+        usePolling: false,
+      }
     },
     port: 9001,
     hot: true,
-    open: true
+    open: true,
+    compress: true,
+    devMiddleware: {
+      publicPath: '/',
+      writeToDisk: false
+    },
+    client: {
+      overlay: {
+        errors: true,
+        warnings: false
+      }
+    }
   },
   module: {
     rules: [{
