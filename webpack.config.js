@@ -38,7 +38,7 @@ module.exports = {
   },
   output: {
     // Dynamically set publicPath to match the commit hash folder
-    publicPath: `/deploy/${commitHash}/`,
+    publicPath:  env === 'production' ? `/deploy/${commitHash}/`:'',
     // Dynamically generate output folder based on Git commit hash
     path: path.resolve(__dirname, 'deploy', commitHash),
     filename: env === 'production' ? '[name].[contenthash].js' : '[name].js',

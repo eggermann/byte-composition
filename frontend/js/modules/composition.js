@@ -23,7 +23,7 @@
  * - start: Aligns to the start
  */
 
-import {WorkBuffer} from './WorkBuffer';
+import {WorkBuffer} from './audio/WorkBuffer';
 
 export default {
     arrangement: {

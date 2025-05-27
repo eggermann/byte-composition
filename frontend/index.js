@@ -30,16 +30,16 @@
 
 import { AudioWorkletNode } from "standardized-audio-context";
 import { getContext } from "tone";
-import byteStepProcessor from './byteStepProcessor/byteStepProcessor.worklet.js';
-import frequencyArrayProcessor from './frequencyArrayProcessor.worklet.js';
+import byteStepProcessor from './js/modules/worklets/byteStepProcessor.worklet.js';
+import frequencyArrayProcessor from './js/modules/worklets/frequencyArrayProcessor.worklet.js';
 import Ab5Sample from "./samples/Ab5.mp3";
-import freeSoundClient from "./freesound-client.js";
-import bufferHelpers from "./prepareAudioBuffer.js";
-import { analysisData, analyzeChannels, applyCorrections } from "./analyzer.js";
+import freeSoundClient from "./js/modules/freesound-client.js";
+import bufferHelpers from "./js/modules/audio/prepareAudioBuffer.js";
+import { analysisData, analyzeChannels, applyCorrections } from "./js/modules/audio/analyzer.js";
 
 // Import our new spectrogram visualizer
 //import { initSpectroVisualizer3D } from "./spectroVisualizer.js";
-import { initSpectroVisualizer3D } from "./spectroVisualizer-exp.js";
+import { initSpectroVisualizer3D } from "./js/modules/spectroVisualizer/spectroVisualizer-exp.js";
 import './styles.css';
 
 const prefetchedSamplesSize = 2;

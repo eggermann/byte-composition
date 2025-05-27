@@ -19,7 +19,7 @@
  * - addBufferToWorklet(buffer, index, processorId): Sends audio buffer to specified worklet
  */
 
-import bufferHelpers from './prepareAudioBuffer.js';
+import bufferHelpers from './audio/prepareAudioBuffer.js';
 
 const audioModule = {
   audioContext: null,

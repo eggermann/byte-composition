@@ -27,7 +27,7 @@
  */
 
 import { process } from './process.js';
-import composition, { arrangement } from '../composition';
+import composition, { arrangement } from '../../modules/composition.js';
 
 class ByteStepProcessor extends AudioWorkletProcessor {
     constructor() {
