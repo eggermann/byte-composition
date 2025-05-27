@@ -24,13 +24,14 @@
  * Requires Freesound API key configured in window.ENV
  */
 
+console.log('freesound-client.js loaded',window.ENV);
+
 const API_KEY = window.ENV?.FREESOUND_API_KEY;
-const SAMPLE_SERVER_URL = process.env.NODE_ENV === 'development'
-  ? 'http://localhost:9001/api'
-  : window.ENV?.SAMPLE_SERVER_URL;
-const SAMPLE_SERVER_API = window.ENV?.SAMPLE_SERVER_API;
-console.log('AMPLE_SERVER_URL:', SAMPLE_SERVER_URL);
-console.log('SAMPLE_SERVER_API:-', SAMPLE_SERVER_API);
+const SAMPLE_SERVER_URL = window.ENV?.SAMPLE_SERVER_URL;
+const SAMPLE_SERVER_API = SAMPLE_SERVER_URL+'/api';
+
+console.log('SAMPLE_SERVER_URL:', SAMPLE_SERVER_URL);
+console.log('SAMPLE_SERVER_API:', SAMPLE_SERVER_API);
 
 if (!SAMPLE_SERVER_URL) {
     console.warn('SAMPLE_SERVER_URL not configured in window.ENV');
@@ -71,7 +72,7 @@ async function getRandomSample() {
     if (config.rally) {
         try {
             console.log('Fetching from sample server...');
-            const response = await fetch(`${SAMPLE_SERVER_API}/${SAMPLE_SERVER_URL}`, {
+            const response = await fetch(`${SAMPLE_SERVER_API}/random`, {
                 mode: 'cors',
                 headers: {
                     'Accept': 'application/json'
@@ -82,7 +83,6 @@ async function getRandomSample() {
             }
             const data = await response.json();
             // Transform relative path to absolute URL when using sample server
-
 
 
             console.log(
@@ -104,8 +104,8 @@ async function getRandomSample() {
                 description: data.description
             };
         } catch (error) {
-                        console.error('Sample server failed', error);
-return;
+            console.error('Sample server failed', error);
+            return;
 
             console.warn('Sample server failed, falling back to Freesound:', error);
             return getRandomFromFreesound();
@@ -192,8 +192,8 @@ async function startFromFiles() {
 // Export functions
 export default {
     load,
-   // setSampleInfos,
-   // startFromFiles,
+    // setSampleInfos,
+    // startFromFiles,
     getRandomSample,
     configure
 };

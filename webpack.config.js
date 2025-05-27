@@ -67,8 +67,8 @@ module.exports = {
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify(env),
       'window.ENV': JSON.stringify({
-        FREESOUND_API_KEY: envConfig?.FREESOUND_API_KEY || '',
-        SAMPLE_SERVER_URL: envConfig?.SAMPLE_SERVER_URL || 'http://localhost:3002/api',
+        FREESOUND_API_KEY: envConfig?.FREESOUND_API_KEY ,
+        SAMPLE_SERVER_URL: envConfig?.SAMPLE_SERVER_URL || 'http://localhost:5673',
         FRONTEND_BASE_URL: envConfig?.FRONTEND_BASE_URL || 'http://localhost:9001'
       })
     }),
