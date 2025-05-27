@@ -24,7 +24,6 @@
  * Requires Freesound API key configured in window.ENV
  */
 
-console.log('freesound-client.js loaded',window.ENV);
 
 const API_KEY = window.ENV?.FREESOUND_API_KEY;
 const SAMPLE_SERVER_URL = window.ENV?.SAMPLE_SERVER_URL;
