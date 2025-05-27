@@ -1,11 +1,12 @@
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const commitHash = require('child_process').execSync('git rev-parse --short HEAD').toString().trim();
 const path = require('path');
 const webpack = require('webpack');
 const dotenv = require('dotenv');
 
 // Load environment variables based on NODE_ENV
 const env = process.env.NODE_ENV || 'development';
-const envFile = env === 'production' ? '.env.production' : '.env.development';
+const envFile = '.env.production';// env === 'production' ? '.env.production' : '.env.development';
 const envConfig = dotenv.config({ path: envFile }).parsed || {};
 
 console.log(`Using ${envFile} configuration...`);
@@ -36,8 +37,10 @@ module.exports = {
     },
   },
   output: {
-    publicPath: '/',
-    path: path.resolve(__dirname, 'dist'),
+    // Dynamically set publicPath to match the commit hash folder
+    publicPath: `/deploy/${commitHash}/`,
+    // Dynamically generate output folder based on Git commit hash
+    path: path.resolve(__dirname, 'deploy', commitHash),
     filename: env === 'production' ? '[name].[contenthash].js' : '[name].js',
     globalObject: 'self',
     clean: true
