@@ -21,7 +21,7 @@ const envKeys = Object.keys(envConfig || {}).reduce((prev, next) => {
 
 module.exports = {
   devtool: env === 'production' ? 'source-map' : 'eval-source-map',
-  entry: './frontend/index.js',
+  entry: './frontend/js/index.js',
   mode: env === 'production' ? 'production' : 'development',
   optimization: {
     moduleIds: 'deterministic',
