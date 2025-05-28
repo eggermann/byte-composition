@@ -15,10 +15,8 @@ canvas {
 }
 
 .start-button {
-  position: fixed;
+
   bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
   padding: 10px 20px;
   background-color: #007bff;
   color: white;
@@ -56,11 +54,16 @@ canvas {
 
 /* Sound Control Panel Styles */
 .sound-control-panel {
+    display: none;
     background: rgba(30, 30, 30, 0.9);
     border-radius: 8px;
     padding: 20px;
     margin-top: 20px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.sound-control-panel.active {
+    display: block;
 }
 
 .processor-controls {
@@ -198,4 +201,32 @@ canvas {
 
 .meter-scale span {
     line-height: 1;
+}
+
+.fixed-wrapper {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    align-items: center;
+}
+
+.fixed-wrapper button {
+    position: static;
+    margin: 0;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.fixed-wrapper button:hover {
+    background-color: #0056b3;
 }

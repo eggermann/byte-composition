@@ -11,7 +11,7 @@ class UIController {
     #meterFrameId = null;
     constructor() {
         this.button = this.createPlayButton();
-        this.appendToDOM();
+
         this.createSoundControlPanel();
         this.initializeMeterUpdates();
     }
@@ -19,27 +19,28 @@ class UIController {
     createSoundControlPanel() {
         const controlPanel = document.createElement('div');
         controlPanel.className = 'sound-control-panel';
-        
+        controlPanel.classList.add('active');
+
         const processorControls = document.createElement('div');
         processorControls.className = 'processor-controls';
-        
+
         // Create processor channels
         for (let i = 1; i <= PROCESSOR_COUNT; i++) {
             processorControls.appendChild(this.createProcessorChannel(`proc${i}`, `Processor ${i}`));
         }
-        
+
         // Add master channel
         processorControls.appendChild(this.createProcessorChannel('master', 'Master Mix', true));
-        
+
         controlPanel.appendChild(processorControls);
         document.querySelector('#app').appendChild(controlPanel);
     }
-    
+
     createProcessorChannel(id, label, isMaster = false) {
         const channel = document.createElement('div');
         channel.className = `processor-channel${isMaster ? ' master-channel' : ''}`;
         channel.dataset.processorId = id;
-        
+
         channel.innerHTML = `
             <div class="channel-header">
                 <span class="processor-label">${label}</span>
@@ -54,9 +55,9 @@ class UIController {
                     <div class="meter-bar rms-level"></div>
                     <div class="meter-bar peak-level"></div>
                     <div class="meter-bars">
-                        ${Array.from({length: 20}, (_, i) =>
-                            `<div class="meter-segment" style="bottom: ${i * 5}%"></div>`
-                        ).join('')}
+                        ${Array.from({ length: 20 }, (_, i) =>
+            `<div class="meter-segment" style="bottom: ${i * 5}%"></div>`
+        ).join('')}
                     </div>
                 </div>
                 <div class="meter-scale">
@@ -90,7 +91,7 @@ class UIController {
                 this.updateSoloState();
             });
         }
-        
+
         return channel;
     }
 
@@ -125,7 +126,7 @@ class UIController {
             }
         });
     }
-    
+
     initializeMeterUpdates() {
         const updateMeters = () => {
             analysisData.forEach((data, procId) => {
@@ -143,24 +144,24 @@ class UIController {
         // Convert to dB values (with floor at -60dB)
         const rmsDb = Math.max(-60, 20 * Math.log10(rms || 0.0001));
         const peakDb = Math.max(-60, 20 * Math.log10(peak || 0.0001));
-        
+
         // Update gain display
         const gainDisplay = channel.querySelector('.gain-value');
         gainDisplay.textContent = `${peakDb.toFixed(1)} dB`;
-        
+
         // Update level meters
         const rmsBar = channel.querySelector('.rms-level');
         const peakBar = channel.querySelector('.peak-level');
         const segments = channel.querySelectorAll('.meter-segment');
-        
+
         // Convert dB to percentage (0dB -> 100%, -60dB -> 0%)
         const dbToPercent = (db) => {
             return Math.max(0, Math.min(100, (db + 60) * (100 / 60)));
         };
-        
+
         const rmsHeight = dbToPercent(rmsDb);
         const peakHeight = dbToPercent(peakDb);
-        
+
         rmsBar.style.height = `${rmsHeight}%`;
         peakBar.style.height = `${peakHeight}%`;
 
@@ -168,7 +169,7 @@ class UIController {
         segments.forEach((segment, i) => {
             const segmentDb = -60 + (i * 3); // Each segment represents 3dB
             const isActive = peakDb >= segmentDb;
-            
+
             let color;
             if (segmentDb >= -3) { // Red zone (near 0dB)
                 color = isActive ? 'rgba(255, 51, 0, 0.8)' : 'rgba(255, 51, 0, 0.1)';
@@ -177,7 +178,7 @@ class UIController {
             } else { // Green zone
                 color = isActive ? 'rgba(0, 255, 136, 0.8)' : 'rgba(0, 255, 136, 0.1)';
             }
-            
+
             segment.style.backgroundColor = color;
         });
 
@@ -221,14 +222,35 @@ class UIController {
     }
 
     createPlayButton() {
-        const button = document.createElement("button");
-        button.innerHTML = "Play";
-        button.className = 'start-button';
-        return button;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'button-wrapper fixed-wrapper';
+
+        this.button = document.createElement("button");
+        this.button.innerHTML = "Play";
+        this.button.className = 'start-button';
+
+        const controlsButton = document.createElement('button');
+        controlsButton.id = 'controls-button';
+        controlsButton.textContent = 'Controls';
+        controlsButton.setAttribute('aria-label', 'Toggle sound controls panel');
+        controlsButton.setAttribute('aria-expanded', 'true');
+        controlsButton.addEventListener('click', () => {
+            const soundControlPanel = document.querySelector('.sound-control-panel');
+            if (soundControlPanel) {
+                const isExpanded = soundControlPanel.classList.toggle('active');
+                controlsButton.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+            }
+        });
+
+        wrapper.appendChild(this.button);
+        wrapper.appendChild(controlsButton);
+        document.body.appendChild(wrapper);
+      
+     return  this.button ;
     }
 
     appendToDOM() {
-        document.body.appendChild(this.button);
+
     }
 
     updatePlayState(isPlaying) {
