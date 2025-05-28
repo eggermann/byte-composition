@@ -35,7 +35,7 @@ async function initializeAudio() {
         masterGain.gain.value = 1.0;
         
         const masterAnalyser = audioContext.getContext().createAnalyser();
-        masterAnalyser.fftSize = 1024;
+        masterAnalyser.fftSize = 2048;
 
         // Setup processors and connections
         processorManager.getProcessorIds().forEach(procId => {
@@ -49,6 +49,12 @@ async function initializeAudio() {
         // Connect master gain to analyzer and destination
         masterGain.connect(masterAnalyser);
         masterAnalyser.connect(audioContext.getContext().destination);
+
+        // Add master analyzer to mixer for level metering
+        processorManager.mixer['master'] = {
+            analyzer: masterAnalyser,
+            gain: masterGain
+        };
 
         // Initialize visualizer
         initSpectroVisualizer3D(masterAnalyser, { 
@@ -71,14 +77,21 @@ async function initializeAudio() {
     }
 }
 
-// Start the analysis interval
+// Start the analysis loop
 function startAnalysisInterval() {
-    setInterval(() => {
+    const analyzeLoop = () => {
         const mixer = processorManager.getMixer();
         const compressors = processorManager.getCompressors();
-        analyzeChannels(mixer, bufferHelpers);
-        applyCorrections(mixer, compressors, audioContext.getContext(), processorManager.PROCESSOR_COUNT);
-    }, 40);
+        
+        // Run analysis on next animation frame
+        requestAnimationFrame(() => {
+            analyzeChannels(mixer, bufferHelpers);
+            applyCorrections(mixer, compressors, audioContext.getContext(), processorManager.PROCESSOR_COUNT);
+            analyzeLoop();
+        });
+    };
+    
+    analyzeLoop();
 }
 
 // Handle playback toggling

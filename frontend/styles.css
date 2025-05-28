@@ -53,3 +53,149 @@ canvas {
 #app h1.playing {
   opacity: 0; /* Fade out when playing */
 }
+
+/* Sound Control Panel Styles */
+.sound-control-panel {
+    background: rgba(30, 30, 30, 0.9);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.processor-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+}
+
+.processor-channel {
+    background: rgba(40, 40, 40, 0.8);
+    border-radius: 6px;
+    padding: 15px;
+    min-width: 200px;
+}
+
+.channel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.channel-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.control-btn {
+    width: 24px;
+    height: 24px;
+    border: 1px solid #444;
+    background: #333;
+    color: #888;
+    border-radius: 3px;
+    cursor: pointer;
+    font-weight: bold;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.control-btn:hover {
+    background: #444;
+    color: #eee;
+}
+
+.control-btn.active {
+    background: #00ff88;
+    color: #000;
+    border-color: #00cc66;
+}
+
+.mute-btn.active {
+    background: #ff3300;
+    border-color: #cc2200;
+}
+
+.processor-label {
+    color: #eee;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.gain-value {
+    color: #00ff88;
+    font-family: monospace;
+    font-size: 14px;
+    min-width: 60px;
+    text-align: right;
+}
+
+.meter-container {
+    position: relative;
+    height: 160px;
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.level-meter {
+    flex-grow: 1;
+    background: rgba(20, 20, 20, 0.8);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+}
+
+.meter-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(to top, #00ff88, #ffff00, #ff3300);
+    transition: height 0.1s ease;
+}
+
+.meter-bar.rms-level {
+    opacity: 0.8;
+    width: 100%;
+}
+
+.meter-bar.peak-level {
+    opacity: 0.4;
+    width: 100%;
+}
+
+.meter-bars {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+}
+
+.meter-segment {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.meter-scale {
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: space-between;
+    color: #888;
+    font-size: 12px;
+    padding: 5px 0;
+}
+
+.meter-scale span {
+    line-height: 1;
+}

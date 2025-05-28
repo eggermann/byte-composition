@@ -3,8 +3,8 @@
  * @description Audio analysis and correction utilities
  */
 
-// Store analysis results per processor
-const analysisResults = new Map();
+// Store analysis results per processor with higher precision
+export const analysisData = new Map();
 
 /**
  * Analyzes audio channels and updates analysis data
@@ -13,20 +13,44 @@ export function analyzeChannels(mixer, bufferHelpers) {
     for (const [procId, channels] of Object.entries(mixer)) {
         if (!channels.analyzer) continue;
 
-        const bufferLength = channels.analyzer.frequencyBinCount;
+        const analyzer = channels.analyzer;
+        const bufferLength = analyzer.frequencyBinCount;
         const dataArray = new Float32Array(bufferLength);
-        channels.analyzer.getFloatTimeDomainData(dataArray);
+        analyzer.getFloatTimeDomainData(dataArray);
 
-        // Analyze the audio data using the existing analyzeLoudness function
-        const analysis = bufferHelpers.analyzeLoudness(dataArray);
+        // Calculate RMS (Root Mean Square)
+        let sumSquares = 0;
+        let peak = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+            const sample = dataArray[i];
+            sumSquares += sample * sample;
+            peak = Math.max(peak, Math.abs(sample));
+        }
+
+        const rms = Math.sqrt(sumSquares / bufferLength);
         
+        // Apply smoothing to prevent jumpy meters
+        const prevAnalysis = analysisData.get(procId) || { rms: 0, peak: 0 };
+        const smoothingFactor = 0.8; // Higher = smoother, but less responsive
+
+        const smoothedRms = prevAnalysis.rms * smoothingFactor + rms * (1 - smoothingFactor);
+        const smoothedPeak = prevAnalysis.peak * smoothingFactor + peak * (1 - smoothingFactor);
+
         // Store analysis results for this processor
-        analysisResults.set(procId, {
-            rms: analysis.rms,
-            peak: analysis.peak,
+        analysisData.set(procId, {
+            rms: smoothedRms,
+            peak: smoothedPeak,
             timestamp: Date.now()
         });
     }
+
+    // Trigger a requestAnimationFrame for continuous updates
+    requestAnimationFrame(() => {
+        if (mixer && bufferHelpers) {
+            analyzeChannels(mixer, bufferHelpers);
+        }
+    });
 }
 
 /**
@@ -40,7 +64,7 @@ export function applyCorrections(mixer, compressors, audioContext, processorCoun
         const procId = `proc${i}`;
         if (!mixer[procId] || !compressors[procId]) continue;
 
-        const analysis = analysisResults.get(procId);
+        const analysis = analysisData.get(procId);
         if (!analysis) continue;
 
         // Apply gain correction based on RMS level
@@ -66,11 +90,12 @@ export function applyCorrections(mixer, compressors, audioContext, processorCoun
     }
 }
 
-// Export the analysis results map for potential monitoring
-export const getAnalysisResults = () => Object.fromEntries(analysisResults);
+// Export a function to get analysis results if needed
+export const getAnalysisResults = () => Object.fromEntries(analysisData);
 
 export default {
     analyzeChannels,
     applyCorrections,
-    getAnalysisResults
+    getAnalysisResults,
+    analysisData
 };
