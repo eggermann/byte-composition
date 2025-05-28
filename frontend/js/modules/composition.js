@@ -9,6 +9,7 @@
  *
  * @dependencies
  * - WorkBuffer.js: Custom audio buffer wrapper implementation
+ * - utilities.js: Math and scaling utilities
  *
  * @exports {Object} arrangement
  * Methods:
@@ -23,22 +24,20 @@
  * - start: Aligns to the start
  */
 
-import {WorkBuffer} from './audio/WorkBuffer';
+import { WorkBuffer } from './audio/WorkBuffer.js';
+import { getLogScaledFitCount } from './core/utilities.js';
 
 export default {
     arrangement: {
         // The `equal` function takes two WorkBuffers and makes them equal in length.
         equal: (s1, s2) => {
-console.log('s1', s1);
-console.log('s2', s2);
-
-            const lenS1 = s1.getLength(), // Get the length of the first buffer
-                lenS2 = s2.getLength(); // Get the length of the second buffer
+            const lenS1 = s1.getLength(),
+                  lenS2 = s2.getLength();
 
             // A function to fit smaller WorkBuffer length to the longer WorkBuffer length
             const fitIn = (longer, smaller) => {
-                const buffLen = longer.getLength(); // Length of the longer buffer
-                const smallerLength = smaller.getLength(); // Length of the smaller buffer
+                const buffLen = longer.getLength();
+                const smallerLength = smaller.getLength();
 
                 // Create two Float32Arrays with the length of the longer buffer
                 const floatArray = [new Float32Array(buffLen), new Float32Array(buffLen)];
@@ -51,45 +50,40 @@ console.log('s2', s2);
 
                 // Calculate how to distribute the rest
                 const howManyTimesFitRest = rest / howManyTimesFit;
-
-                let modRoom = smallerLength + howManyTimesFitRest; // New effective length of the smaller buffer
+                let modRoom = smallerLength + howManyTimesFitRest;
 
                 for (let j = 0; j < longer.channelData.length; j++) {
-                    console.log('floatArray', j)
                     for (let i = 0; i < buffLen; i++) {
                         // Calculate the index in the smaller buffer, wrapping around if necessary
                         const index = (i - (rest / 2)) % modRoom;
-                        const val = smaller.channelData[j][index] ?? 0; // Use the value or 0 if undefined
-
-                        floatArray[j][i] = val; // Set the value in the new buffer
+                        const val = smaller.channelData[j][index] ?? 0;
+                        floatArray[j][i] = val;
                     }
                 }
 
                 // Return a new WorkBuffer with the adjusted channel data
-                return new WorkBuffer({channelData: floatArray});
+                return new WorkBuffer({ channelData: floatArray });
             }
 
             // Adjust the shorter buffer to match the length of the longer one
             if (lenS1 > lenS2) {
                 s2 = fitIn(s1, s2);
-                console.log('*-->', lenS1, s2.getLength()); // Log the new length for debugging
             }
 
             if (lenS2 > lenS1) {
-                console.log('buffLen', s2.getLength());
-                s1 = fitIn(s2, s1); // Adjust the first buffer to match the second
+                s1 = fitIn(s2, s1);
             }
 
-            return {s1, s2}; // Return the adjusted second buffer
-
+            return { s1, s2 };
         },
-        random(s1, s2){
-          
+
+        random(s1, s2) {
             const justifyOptions = ['space-between', 'space-evenly', 'center', 'start'];
             const randomIndex = Math.floor(Math.random() * justifyOptions.length);
             const randomJustify = justifyOptions[randomIndex];
             return this.repeat(s1, s2, randomJustify);
         },
+
         repeat: (s1, s2, justifyContent = 'space-between') => {
             const lenS1 = s1.getLength();
             const lenS2 = s2.getLength();
@@ -97,7 +91,8 @@ console.log('s2', s2);
             const [longer, smaller] = lenS1 > lenS2 ? [s1, s2] : [s2, s1];
             const longerLen = longer.getLength();
             const smallerLen = smaller.getLength();
-            const howManyTimesFit = Math.floor(longerLen / smallerLen);
+
+            const howManyTimesFit = getLogScaledFitCount(longerLen, smallerLen);
             const rest = longerLen - (howManyTimesFit * smallerLen);
 
             let spaceBetween = 0;
@@ -136,9 +131,9 @@ console.log('s2', s2);
             }
 
             if (lenS1 > lenS2) {
-                return {s1: longer, s2: new WorkBuffer({channelData: floatArray})};
+                return { s1: longer, s2: new WorkBuffer({ channelData: floatArray }) };
             } else {
-                return {s1: new WorkBuffer({channelData: floatArray}), s2: longer};
+                return { s1: new WorkBuffer({ channelData: floatArray }), s2: longer };
             }
         }
     }

@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "use webpack v5 and worklet-loader",
   "main": "index.js",
-  "scripts": {
+
+   "scripts": {
     "build": "webpack",
     "start": "npx webpack serve --config webpack.config.js",
     "dev": "npx webpack serve --config webpack.config.js"
