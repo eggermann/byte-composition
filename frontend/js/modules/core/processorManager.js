@@ -44,18 +44,25 @@ class ProcessorManager {
     }
 
     connectProcessor(procId, masterGain) {
+        // Initialize analyzer for accurate metering
+        this.mixer[procId].analyzer.smoothingTimeConstant = 0.3;
+        this.mixer[procId].analyzer.minDecibels = -90;
+        this.mixer[procId].analyzer.maxDecibels = -10;
+
         if (procId === 'proc2') { // Special handling for proc2 with delay
             const delay = audioContext.getContext().createDelay();
             delay.delayTime.value = 0.15;
             this.processors[procId].connect(delay);
-            delay.connect(this.mixer[procId].gain);
+            delay.connect(this.mixer[procId].analyzer);
+            this.mixer[procId].analyzer.connect(this.mixer[procId].gain);
         } else {
-            this.processors[procId].connect(this.mixer[procId].gain);
+            this.processors[procId].connect(this.mixer[procId].analyzer);
+            this.mixer[procId].analyzer.connect(this.mixer[procId].gain);
         }
 
+        // Connect gain to compressor and then to master
         this.mixer[procId].gain.connect(this.compressors[procId]);
-        this.compressors[procId].connect(this.mixer[procId].analyzer);
-        this.mixer[procId].analyzer.connect(masterGain);
+        this.compressors[procId].connect(masterGain);
     }
 
     addBufferToWorklet(buffer, index = 0, processorId = "proc1") {
@@ -65,20 +72,33 @@ class ProcessorManager {
             return;
         }
 
-        console.log(`Processing buffer for ${procId}:`, {
-            length: buffer.length,
-            sampleRate: buffer.sampleRate,
-            channels: buffer.numberOfChannels,
-            index: index,
-        });
-
-        const simpleBuffer = bufferManager.prepareBuffer(buffer);
-
-        this.processors[procId].port.postMessage({
-            type: "sendSample",
-            buffer: simpleBuffer,
-            index: index,
-            processorId: procId,
+        // Prepare buffer in next microtask to avoid blocking
+        queueMicrotask(async () => {
+            try {
+                // Use transferable objects for better performance
+                const simpleBuffer = await bufferManager.prepareBuffer(buffer);
+                
+                // Convert channels to TypedArrays for transfer
+                const channel0 = new Float32Array(simpleBuffer.channels[0]);
+                const channel1 = new Float32Array(simpleBuffer.channels[1]);
+                
+                // Separate control and audio data channels
+                if (this.processors[procId].port) {
+                    this.processors[procId].port.postMessage({
+                        type: "sendSample",
+                        buffer: {
+                            channels: [channel0, channel1],
+                            length: simpleBuffer.length,
+                            sampleRate: simpleBuffer.sampleRate,
+                            numberOfChannels: 2
+                        },
+                        index: index,
+                        processorId: procId,
+                    }, [channel0.buffer, channel1.buffer]);
+                }
+            } catch (err) {
+                console.error(`Error preparing buffer for ${procId}:`, err);
+            }
         });
     }
 
@@ -87,12 +107,21 @@ class ProcessorManager {
     }
 
     setupMessageHandler(procId, onDeliverNewSample) {
-        this.processors[procId].port.onmessage = async (event) => {
+        // Create separate port for control messages
+        const controlPort = this.processors[procId].port;
+        
+        controlPort.onmessage = async (event) => {
             const data = event.data;
-            console.log(`Received message from ${procId}:`, data.type);
-
+            
+            // Handle control messages in next tick to avoid blocking
             if (data.type === "deliverNewSample") {
-                await onDeliverNewSample(procId);
+                queueMicrotask(async () => {
+                    try {
+                        await onDeliverNewSample(procId);
+                    } catch (err) {
+                        console.error(`Error delivering sample to ${procId}:`, err);
+                    }
+                });
             }
         };
     }

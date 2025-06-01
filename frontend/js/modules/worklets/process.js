@@ -1,3 +1,10 @@
+import tm from 'taktmuster';
+
+const taktmuster = new tm.Taktmuster();
+const curve = taktmuster.setTakt(4, 4, 4, 'sin', 'mixFinalClassic')
+
+
+
 const pitch = 3;
 
 const _ = {
@@ -28,9 +35,9 @@ function createFadeEnvelope(totalSamples, fadeInSamples, fadeOutSamples) {
     }
 }
 
-function validateBuffers(workBuffer) {
+function validateBuffers(context, workBuffer) {
     if (!workBuffer[0] || !workBuffer[1]) {
-        console.log('Work buffers not ready:', {
+        context.logger('Work buffers not ready:', {
             buffer0: !!workBuffer[0],
             buffer1: !!workBuffer[1]
         });
@@ -40,15 +47,15 @@ function validateBuffers(workBuffer) {
 }
 
 function handleSampleCount(context, buffer1Length, buffer2Length) {
-    console.log('   this.roundCount:', context.roundCount);
-    console.log('buffer1Length:', buffer1Length, '/', buffer2Length);
+    context.logger('   this.roundCount:', context.roundCount);
+    context.logger('buffer1Length:', buffer1Length, '/', buffer2Length);
     context.roundCount++;
 
     const totalBytes = buffer1Length * 2;
     const runningBytes = totalBytes - context.finishCount;
     const percentage = ((context.finishCount / totalBytes) * 100).toFixed(2);
-    
-    console.log(`finished ${context.finishCount} runningBytes ${runningBytes} ${percentage}%`);
+
+    context.logger(`finished ${context.finishCount} runningBytes ${runningBytes} ${percentage}%`);
 
     if (parseFloat(percentage) >= 96 && !context.hasRefreshed) {
         context.hasRefreshed = true;
@@ -77,7 +84,7 @@ function handleSampleCount(context, buffer1Length, buffer2Length) {
 
 function adjustBufferValue(byteValue1, byteValue2, step) {
     let finished = false;
-    
+
     if (byteValue1 < byteValue2) {
         byteValue1 += step;
         if (byteValue1 > byteValue2) {
@@ -104,7 +111,7 @@ function processChannelSample(context, channel, pos1, pos2, step) {
     const byteValue2 = Math.round((sample2 + 1) * 127.5);
 
     const { byteValue1: adjustedValue, finished } = adjustBufferValue(byteValue1, byteValue2, step);
-    
+
     if (finished) {
         context.finishCount++;
     }
@@ -127,17 +134,32 @@ function applyInterpolation(context, channel, d, currentSample) {
     const sampleA = context.workBuffer[0].channelData[channel][idx0];
     const sampleB = context.workBuffer[0].channelData[channel][idx1];
     const interpolatedSample = sampleA + fractional * (sampleB - sampleA);
-    
+
     return (currentSample * (1 - fadeVal)) + (interpolatedSample * fadeVal);
 }
 
 export function process(inputs, outputs, parameters) {
     try {
+        // Initialize logger only once per processor instance
+        if (!this._loggerInitialized) {
+            const procId = this.procId || 'unknown';
+            const procColor = this.procColor || 'black';
+            this.logger = function(message, ...args) {
+                console.log(`%c[Processor ${procId}] ${message}`, `color: ${procColor}`, ...args);
+            };
+            this._loggerInitialized = true;
+            this._lastLogTime = 0;
+            this._logInterval = 1; // Log every second in audio time
+        }
+
+        // Throttle logging using audio context time
+        const now = currentTime;
+
         if (!this.isPlaying) {
             return true;
         }
 
-        if (!validateBuffers(this.workBuffer)) {
+        if (!validateBuffers(this, this.workBuffer)) {
             return true;
         }
 
@@ -159,7 +181,12 @@ export function process(inputs, outputs, parameters) {
                     this.newSample = false;
                     this.finishCount = 0;
                 }
-                handleSampleCount(this, buffer1Length, buffer2Length);
+                // Check if enough time has passed since last log
+                const timeSinceLastLog = now - this._lastLogTime;
+                if (timeSinceLastLog > this._logInterval) {
+                    this._lastLogTime = now;
+                    handleSampleCount(this, buffer1Length, buffer2Length);
+                }
             }
 
             for (let channel = 0; channel < output.length; ++channel) {
@@ -171,7 +198,11 @@ export function process(inputs, outputs, parameters) {
                     const d = this.pos % (buffer1Length * pitch);
                     output[channel][i] = applyInterpolation(this, channel, d, output[channel][i]);
                 } catch (err) {
-                    console.error('Error processing channel:', err);
+                    const timeSinceLastLog = now - this._lastLogTime;
+                    if (timeSinceLastLog > this._logInterval) {
+                        this.logger('Error processing channel:', err);
+                        this._lastLogTime = now;
+                    }
                 }
             }
 
@@ -180,7 +211,11 @@ export function process(inputs, outputs, parameters) {
 
         return true;
     } catch (err) {
-        console.error('Error in process:', err);
+        const timeSinceLastLog = now - this._lastLogTime;
+        if (timeSinceLastLog > this._logInterval) {
+            this.logger('Error in process:', err);
+            this._lastLogTime = now;
+        }
         return true;
     }
 }

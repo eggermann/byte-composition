@@ -11,9 +11,7 @@ class UIController {
     #meterFrameId = null;
     constructor() {
         this.button = this.createPlayButton();
-
         this.createSoundControlPanel();
-        this.initializeMeterUpdates();
     }
 
     createSoundControlPanel() {
@@ -96,11 +94,7 @@ class UIController {
     }
 
     getProcessorGain(procId) {
-        const processorManager = window.processorManager;
-        if (processorManager && processorManager.mixer && processorManager.mixer[procId]) {
-            return processorManager.mixer[procId].gain;
-        }
-        return null;
+        return window.processorManager?.mixer?.[procId]?.gain || null;
     }
 
     updateSoloState() {
@@ -129,8 +123,28 @@ class UIController {
 
     initializeMeterUpdates() {
         const updateMeters = () => {
-            analysisData.forEach((data, procId) => {
-                this.updateChannelMeters(procId, data);
+            // Get current data from Map
+            const mixer = window.processorManager?.getMixer() || {};
+            Object.entries(mixer).forEach(([procId, channel]) => {
+                if (!channel.analyzer) return;
+                
+                // Get fresh analyzer data
+                const analyzer = channel.analyzer;
+                const bufferLength = analyzer.frequencyBinCount;
+                const dataArray = new Float32Array(bufferLength);
+                analyzer.getFloatTimeDomainData(dataArray);
+
+                // Calculate levels
+                let sumSquares = 0;
+                let peak = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    const sample = dataArray[i];
+                    sumSquares += sample * sample;
+                    peak = Math.max(peak, Math.abs(sample));
+                }
+                
+                const rms = Math.sqrt(sumSquares / bufferLength);
+                this.updateChannelMeters(procId, { rms, peak });
             });
             this.#meterFrameId = requestAnimationFrame(updateMeters);
         };
@@ -283,6 +297,11 @@ class UIController {
             this.setLoading(true);
             try {
                 await callback();
+                // Start meter updates after successful audio initialization
+                if (!this.#meterFrameId && audioContext.getState().isInitialized) {
+                    console.log('Starting meter updates');
+                    this.initializeMeterUpdates();
+                }
             } catch (error) {
                 console.error("Error during button click handling:", error);
                 this.setError();

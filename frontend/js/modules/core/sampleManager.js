@@ -18,31 +18,34 @@ class SampleManager {
     }
 
     async deliverSamplesToProcessor(procId) {
-        console.log(`${procId}: Received request for new sample, prefetching...`);
+        console.log(`${procId}: Received request for new sample`);
         const samples = processorManager.getPrefetchedSamples(procId);
 
-        const addSamplesToWorklet = () => {
-            if (samples && samples.length >= 2) {
-                processorManager.addBufferToWorklet(samples.shift(), 0, procId);
-                processorManager.addBufferToWorklet(samples.shift(), 1, procId);
-            } else {
-                console.warn(`${procId}: Not enough prefetched samples to deliver.`);
-            }
-        };
-
+        // Immediate delivery if samples are available
         if (samples && samples.length >= 2) {
-            addSamplesToWorklet();
-        } else {
-            console.log(`${procId}: Waiting for prefetched samples...`);
-            return new Promise((resolve) => {
-                const checkSamples = setInterval(() => {
-                    if (samples && samples.length >= 2) {
-                        clearInterval(checkSamples);
-                        addSamplesToWorklet();
-                        resolve();
-                    }
-                }, 400);
+            const sample1 = samples.shift();
+            const sample2 = samples.shift();
+            
+            // Schedule next prefetch immediately
+            this.prefetchSamples(this._freeSoundClient).catch(console.error);
+            
+            // Queue buffer additions to avoid blocking
+            queueMicrotask(() => {
+                processorManager.addBufferToWorklet(sample1, 0, procId);
+                processorManager.addBufferToWorklet(sample2, 1, procId);
             });
+            
+            return;
+        }
+
+        // If no samples available, prefetch immediately
+        console.log(`${procId}: Emergency prefetch needed`);
+        try {
+            await this.prefetchSamples(this._freeSoundClient);
+            return this.deliverSamplesToProcessor(procId);
+        } catch (err) {
+            console.error(`${procId}: Failed to prefetch samples:`, err);
+            throw err;
         }
     }
 
@@ -93,11 +96,19 @@ class SampleManager {
         }
     }
 
-    startPrefetchInterval(freeSoundClient, interval = 5000) {
+    startPrefetchInterval(freeSoundClient, interval = 2000) {
         if (!this.bufferHelpers) {
             throw new Error('SampleManager not initialized with bufferHelpers');
         }
-        return setInterval(() => this.prefetchSamples(freeSoundClient), interval);
+        this._freeSoundClient = freeSoundClient;
+        
+        // Initial prefetch
+        this.prefetchSamples(freeSoundClient).catch(console.error);
+        
+        // Shorter interval for more responsive prefetching
+        return setInterval(() => {
+            this.prefetchSamples(freeSoundClient).catch(console.error);
+        }, interval);
     }
 }
 

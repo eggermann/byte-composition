@@ -10,43 +10,52 @@ export const analysisData = new Map();
  * Analyzes audio channels and updates analysis data
  */
 export function analyzeChannels(mixer, bufferHelpers) {
-    for (const [procId, channels] of Object.entries(mixer)) {
-        if (!channels.analyzer) continue;
+    if (!mixer) return;
 
-        const analyzer = channels.analyzer;
-        const bufferLength = analyzer.frequencyBinCount;
-        const dataArray = new Float32Array(bufferLength);
-        analyzer.getFloatTimeDomainData(dataArray);
+    requestAnimationFrame(() => {
+        for (const [procId, channels] of Object.entries(mixer)) {
+            if (!channels.analyzer) continue;
 
-        // Calculate RMS (Root Mean Square)
-        let sumSquares = 0;
-        let peak = 0;
+            const analyzer = channels.analyzer;
+            const bufferLength = analyzer.frequencyBinCount;
+            const dataArray = new Float32Array(bufferLength);
+            
+            // Get time domain data for level measurement
+            analyzer.getFloatTimeDomainData(dataArray);
 
-        for (let i = 0; i < bufferLength; i++) {
-            const sample = dataArray[i];
-            sumSquares += sample * sample;
-            peak = Math.max(peak, Math.abs(sample));
+            // Calculate RMS and peak with higher precision
+            let sumSquares = 0;
+            let peak = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const sample = dataArray[i];
+                sumSquares += sample * sample;
+                peak = Math.max(peak, Math.abs(sample));
+            }
+
+            const rms = Math.sqrt(sumSquares / bufferLength);
+            
+            // Apply adaptive smoothing
+            const prevAnalysis = analysisData.get(procId) || { rms: 0, peak: 0 };
+            const smoothingAttack = 0.9; // Faster attack
+            const smoothingRelease = 0.99; // Slower release
+
+            // Use different smoothing for increasing vs decreasing levels
+            const rmsSmoothing = rms > prevAnalysis.rms ? smoothingAttack : smoothingRelease;
+            const peakSmoothing = peak > prevAnalysis.peak ? smoothingAttack : smoothingRelease;
+
+            const smoothedRms = prevAnalysis.rms * rmsSmoothing + rms * (1 - rmsSmoothing);
+            const smoothedPeak = prevAnalysis.peak * peakSmoothing + peak * (1 - peakSmoothing);
+
+            // Update analysis data map
+            analysisData.set(procId, {
+                rms: smoothedRms,
+                peak: smoothedPeak,
+                timestamp: Date.now()
+            });
         }
 
-        const rms = Math.sqrt(sumSquares / bufferLength);
-        
-        // Apply smoothing to prevent jumpy meters
-        const prevAnalysis = analysisData.get(procId) || { rms: 0, peak: 0 };
-        const smoothingFactor = 0.8; // Higher = smoother, but less responsive
-
-        const smoothedRms = prevAnalysis.rms * smoothingFactor + rms * (1 - smoothingFactor);
-        const smoothedPeak = prevAnalysis.peak * smoothingFactor + peak * (1 - smoothingFactor);
-
-        // Store analysis results for this processor
-        analysisData.set(procId, {
-            rms: smoothedRms,
-            peak: smoothedPeak,
-            timestamp: Date.now()
-        });
-    }
-
-    // Trigger a requestAnimationFrame for continuous updates
-    requestAnimationFrame(() => {
+        // Continue analysis loop
         if (mixer && bufferHelpers) {
             analyzeChannels(mixer, bufferHelpers);
         }

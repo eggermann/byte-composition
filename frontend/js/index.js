@@ -21,6 +21,9 @@ import { analyzeChannels, applyCorrections } from './modules/core/analyzer';
 // Initialize core dependencies
 sampleManager.initialize(bufferHelpers);
 
+// Expose processorManager to window for UI access
+window.processorManager = processorManager;
+
 // Initialize the audio system
 async function initializeAudio() {
     if (audioContext.getState().isInitialized) return;
@@ -79,18 +82,38 @@ async function initializeAudio() {
 
 // Start the analysis loop
 function startAnalysisInterval() {
+    // Initial state check
+    if (!audioContext.getState().isInitialized) {
+        console.warn('Analysis started before audio initialization');
+        return;
+    }
+
+    console.log('Starting analysis loop');
+    
     const analyzeLoop = () => {
         const mixer = processorManager.getMixer();
         const compressors = processorManager.getCompressors();
         
-        // Run analysis on next animation frame
-        requestAnimationFrame(() => {
-            analyzeChannels(mixer, bufferHelpers);
-            applyCorrections(mixer, compressors, audioContext.getContext(), processorManager.PROCESSOR_COUNT);
-            analyzeLoop();
+        if (!mixer) {
+            console.warn('No mixer available for analysis');
+            return;
+        }
+
+        // Ensure analyzer nodes are set up correctly
+        Object.entries(mixer).forEach(([procId, channel]) => {
+            if (channel.analyzer) {
+                channel.analyzer.smoothingTimeConstant = 0.3;
+                channel.analyzer.minDecibels = -90;
+                channel.analyzer.maxDecibels = -10;
+            }
         });
+
+        // Start the analysis chain
+        analyzeChannels(mixer);
+        applyCorrections(mixer, compressors, audioContext.getContext(), processorManager.PROCESSOR_COUNT);
     };
     
+    // Start the loop
     analyzeLoop();
 }
 
