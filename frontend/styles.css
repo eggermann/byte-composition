@@ -215,7 +215,7 @@ canvas {
     align-items: center;
 }
 
-.fixed-wrapper button {
+.fixed-wrapper .start-button {
     position: static;
     margin: 0;
     padding: 10px 20px;
@@ -227,6 +227,22 @@ canvas {
     font-size: 16px;
 }
 
-.fixed-wrapper button:hover {
+.fixed-wrapper .start-button:hover {
     background-color: #0056b3;
+}
+
+.fixed-wrapper #controls-button {
+    position: static;
+    margin: 0;
+    padding: 8px 15px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.fixed-wrapper #controls-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
 }
