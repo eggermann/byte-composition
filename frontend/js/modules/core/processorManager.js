@@ -3,7 +3,6 @@
  * @description Manages AudioWorklet processors, their setup, and message handling
  */
 
-import { AudioWorkletNode } from "standardized-audio-context";
 import audioContext from './audioContext';
 import bufferManager from './bufferManager';
 

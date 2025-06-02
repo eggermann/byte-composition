@@ -92,6 +92,8 @@ class SampleManager {
                 type: "start", 
                 processorId: procId 
             });
+              setTimeout(() =>     processorManager.processors[procId].port.postMessage({ type: 'start' , 
+                processorId: procId }), 220);
             processorManager.processors[procId]._started = true;
         }
     }

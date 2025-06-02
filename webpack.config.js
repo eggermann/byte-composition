@@ -20,6 +20,9 @@ const envKeys = Object.keys(envConfig || {}).reduce((prev, next) => {
 
 
 module.exports = {
+  stats: {
+    children: true
+  },
   devtool: env === 'production' ? 'source-map' : 'eval-source-map',
   entry: './frontend/js/index.js',
   mode: env === 'production' ? 'production' : 'development',
@@ -52,7 +55,7 @@ module.exports = {
     }
   },
   plugins: [
-    new webpack.ids.HashedModuleIdsPlugin(),
+    //new webpack.ids.HashedModuleIdsPlugin(),
     new webpack.ProgressPlugin({
       percentBy: 'entries'
     }),

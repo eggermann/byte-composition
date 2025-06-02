@@ -3,11 +3,17 @@
  * @description Manages the audio context and its initialization state
  */
 
-import { getContext } from "tone";
 
 class AudioContextManager {
     constructor() {
-        this.audioContext = new getContext().rawContext;
+        console.log("Initializing AudioContextManager...");
+
+        // Use the browser‑native AudioContext so we can pass it to AudioWorkletNode
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        console.log("AudioContext state after initialization:", this.audioContext);
+        console.log("AudioContext state after initialization:", this.audioContext.state);
+
         this.isInitialized = false;
         this.isPlaying = false;
     }

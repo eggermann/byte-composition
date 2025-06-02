@@ -74,10 +74,22 @@ class UIController {
         if (muteBtn) {
             muteBtn.addEventListener('click', () => {
                 muteBtn.classList.toggle('active');
+                const isMuted = muteBtn.classList.contains('active');
+
                 if (!isMaster) {
                     const gainNode = this.getProcessorGain(id);
                     if (gainNode) {
-                        gainNode.gain.value = muteBtn.classList.contains('active') ? 0 : 0.35;
+                        gainNode.gain.value = isMuted ? 0 : 0.35;
+
+                    }
+
+                    // Update processor state
+                    const processor = window.processorManager?.processors?.[id];
+                    if (processor?.port) {
+                        processor.port.postMessage({
+                            type: 'setState',
+                            state: { isMuted }
+                        });
                     }
                 }
             });
@@ -86,6 +98,17 @@ class UIController {
         if (soloBtn) {
             soloBtn.addEventListener('click', () => {
                 soloBtn.classList.toggle('active');
+                                const isSoloed = soloBtn.classList.contains('active');
+                
+                // Update processor state before updating solo state
+                const processor = window.processorManager?.processors?.[id];
+                if (processor?.port) {
+                    processor.port.postMessage({
+                        type: 'setState',
+                        state: { isSoloed }
+                    });
+                }
+
                 this.updateSoloState();
             });
         }
@@ -127,7 +150,7 @@ class UIController {
             const mixer = window.processorManager?.getMixer() || {};
             Object.entries(mixer).forEach(([procId, channel]) => {
                 if (!channel.analyzer) return;
-                
+
                 // Get fresh analyzer data
                 const analyzer = channel.analyzer;
                 const bufferLength = analyzer.frequencyBinCount;
@@ -142,7 +165,7 @@ class UIController {
                     sumSquares += sample * sample;
                     peak = Math.max(peak, Math.abs(sample));
                 }
-                
+
                 const rms = Math.sqrt(sumSquares / bufferLength);
                 this.updateChannelMeters(procId, { rms, peak });
             });
@@ -259,8 +282,8 @@ class UIController {
         wrapper.appendChild(this.button);
         wrapper.appendChild(controlsButton);
         document.body.appendChild(wrapper);
-      
-     return  this.button ;
+
+        return this.button;
     }
 
     appendToDOM() {

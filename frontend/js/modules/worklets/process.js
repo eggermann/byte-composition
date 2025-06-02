@@ -3,9 +3,19 @@ import tm from 'taktmuster';
 const taktmuster = new tm.Taktmuster();
 const curve = taktmuster.setTakt(4, 4, 4, 'sin', 'mixFinalClassic')
 
+function getProcessorColor(procId) {
+    // Extract processor number from ID
+    const match = procId.match(/\d+$/);
+    if (!match) return 'black';
+
+    const procNum = parseInt(match[0]);
+    // Use golden ratio for nice color distribution
+    const hue = (procNum * 137.5) % 360;  // golden angle approximation
+    return `hsl(${hue}, 70%, 45%)`;
+}
 
 
-const pitch = 3;
+let pitch = 3;
 
 const _ = {
     bufferLength: 0,
@@ -13,7 +23,10 @@ const _ = {
     falseASalseAsLong: function (limit) {
         let pos = 0;
         return function getNext() {
-            return pos++ >= limit ? { limit: limit } : false;
+            return pos++ >= limit ? { limit: limit } : (() => {
+                context.hasSubLine = false;
+                return false;
+            });
         }
     }
 }
@@ -51,7 +64,7 @@ function handleSampleCount(context, buffer1Length, buffer2Length) {
     context.logger('buffer1Length:', buffer1Length, '/', buffer2Length);
     context.roundCount++;
 
-    const totalBytes = buffer1Length * 2;
+    const totalBytes = buffer1Length;
     const runningBytes = totalBytes - context.finishCount;
     const percentage = ((context.finishCount / totalBytes) * 100).toFixed(2);
 
@@ -66,8 +79,11 @@ function handleSampleCount(context, buffer1Length, buffer2Length) {
     }
 
     if (parseFloat(percentage) >= 50 && !context.hasSubLine) {
+        pitch = curve.getNext().taktValue + .25
+
+
         context.hasSubLine = true;
-        const totalFadeSamples = buffer1Length * 3;
+        const totalFadeSamples = buffer1Length *  curve.getNext().taktValue;
         const fadeInSamples = Math.floor(totalFadeSamples * 0.1);
         const fadeOutSamples = Math.floor(totalFadeSamples * 0.1);
         context.falseAS = createFadeEnvelope(totalFadeSamples, fadeInSamples, fadeOutSamples);
@@ -143,13 +159,31 @@ export function process(inputs, outputs, parameters) {
         // Initialize logger only once per processor instance
         if (!this._loggerInitialized) {
             const procId = this.procId || 'unknown';
-            const procColor = this.procColor || 'black';
-            this.logger = function(message, ...args) {
-                console.log(`%c[Processor ${procId}] ${message}`, `color: ${procColor}`, ...args);
-            };
+                       const procColor = getProcessorColor(procId);
+
+            // Extended logger with state information
+            this.logger = function (message, ...args) {
+                const states = [];
+                if (this.isMuted) states.push('MUTED');
+                if (this.isSoloed) states.push('SOLO');
+
+                const stateStr = states.length ? ` [${states.join('|')}]` : '';
+                const prefix = `%c[Processor ${procId}${stateStr}]`;
+
+                // Use gray color if muted
+                const currentColor = this.isMuted ? '#999' : procColor;
+
+                console.log(`${prefix} ${message}`, `color: ${currentColor}`, ...args);
+            }.bind(this); // Bind to keep 'this' context
+
             this._loggerInitialized = true;
             this._lastLogTime = 0;
             this._logInterval = 1; // Log every second in audio time
+
+                        // Initialize state
+            this.isMuted = false;
+            this.isSoloed = false;
+
         }
 
         // Throttle logging using audio context time
@@ -197,6 +231,9 @@ export function process(inputs, outputs, parameters) {
 
                     const d = this.pos % (buffer1Length * pitch);
                     output[channel][i] = applyInterpolation(this, channel, d, output[channel][i]);
+
+
+
                 } catch (err) {
                     const timeSinceLastLog = now - this._lastLogTime;
                     if (timeSinceLastLog > this._logInterval) {

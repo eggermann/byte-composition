@@ -34,7 +34,7 @@ class ByteStepProcessor extends AudioWorkletProcessor {
         super();
         this.freshBuffers = [];
         this.sampleRoundCount = 0;
-        this.isPlaying = false;
+this.isPlaying = true
         this.pos = 0;
         this.workBuffer = [
             { channelData: [[], []], getLength: () => 0 },

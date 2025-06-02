@@ -26,13 +26,17 @@
 
 import { WorkBuffer } from './audio/WorkBuffer.js';
 import { getLogScaledFitCount } from './core/utilities.js';
+import tm from 'taktmuster';
+
+const taktmuster = new tm.Taktmuster();
+const curve = taktmuster.setTakt(3, 3, 4, 'sin', 'mixFinalClassic')
 
 export default {
     arrangement: {
         // The `equal` function takes two WorkBuffers and makes them equal in length.
         equal: (s1, s2) => {
             const lenS1 = s1.getLength(),
-                  lenS2 = s2.getLength();
+                lenS2 = s2.getLength();
 
             // A function to fit smaller WorkBuffer length to the longer WorkBuffer length
             const fitIn = (longer, smaller) => {
@@ -119,7 +123,15 @@ export default {
             for (let j = 0; j < longer.channelData.length; j++) {
                 let offset = initialOffset;
                 for (let i = 0; i < howManyTimesFit; i++) {
-                    for (let k = 0; k < smallerLen; k++) {
+
+                    let k2 = 1;
+                    if (howManyTimesFit > 2) {
+                        k2 = curve.getNext().taktValue ;
+
+                    }
+
+
+                    for (let k = 0; k < smallerLen; k+=k2){
                         const index = i * smallerLen + k;
                         if (index + offset < longerLen) {
                             const val = smaller.channelData[j][k] ?? 0;
