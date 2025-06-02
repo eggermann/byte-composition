@@ -4,11 +4,11 @@
  */
 
 import byteStepProcessor from './modules/worklets/byteStepProcessor.worklet.js';
-import frequencyArrayProcessor from './modules/worklets/frequencyArrayProcessor.worklet.js';
 import Ab5Sample from "../samples/Ab5.mp3";
 import freeSoundClient from "./modules/freesound-client.js";
 import bufferHelpers from "./modules/audio/prepareAudioBuffer.js";
 import { initSpectroVisualizer3D } from "./modules/spectroVisualizer/spectroVisualizer-exp.js";
+import {process} from './modules/composition.js';
 import '../styles.css';
 
 // Import core modules
@@ -16,6 +16,7 @@ import audioContext from './modules/core/audioContext';
 import processorManager from './modules/core/processorManager';
 import sampleManager from './modules/core/sampleManager';
 import uiController from './modules/core/uiController';
+import composition from './modules/composition';
 import { analyzeChannels, applyCorrections } from './modules/core/analyzer';
 
 // Initialize core dependencies
@@ -72,6 +73,8 @@ async function initializeAudio() {
 
         audioContext.setInitialized(true);
         console.log("Audio system initialized successfully.");
+
+        composition.process(processorManager);
 
     } catch (err) {
         console.error("Error during initialization:", err);

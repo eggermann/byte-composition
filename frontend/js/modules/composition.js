@@ -1,37 +1,55 @@
-/**
- * @file composition.js
- * @description Audio buffer composition and arrangement module. Provides utilities for
- * manipulating and combining audio buffers with different arrangement strategies.
- *
- * @module Composition
- * @author eggman
- * @created 2025
- *
- * @dependencies
- * - WorkBuffer.js: Custom audio buffer wrapper implementation
- * - utilities.js: Math and scaling utilities
- *
- * @exports {Object} arrangement
- * Methods:
- * - equal(s1, s2): Equalizes two buffers to the same length
- * - random(s1, s2): Applies random arrangement strategy
- * - repeat(s1, s2, justifyContent): Repeats smaller buffer with spacing options
- *
- * @arrangements
- * - space-between: Distributes space between segments
- * - space-evenly: Equal space before, between, and after segments
- * - center: Centers the arrangement
- * - start: Aligns to the start
- */
-
 import { WorkBuffer } from './audio/WorkBuffer.js';
 import { getLogScaledFitCount } from './core/utilities.js';
 import tm from 'taktmuster';
 
+
+
+
+const tempo = 60;
+const ppq = 100;
+let taktLen = 5;
+let zaehler = 4;
+let nenner = 4;
+
 const taktmuster = new tm.Taktmuster();
-const curve = taktmuster.setTakt(3, 3, 4, 'sin', 'mixFinalClassic')
+const curve = taktmuster.setTakt(3, 3, 4, 'sin', 'mixFinalClassic');
+let mixCurve = taktmuster.setTakt(taktLen, zaehler, nenner, 'toggle', 'mixFinalClassic');
+const metrom = taktmuster.initMetrum(tempo, ppq);
 
 export default {
+
+    process: (processorManager) => {
+        console.log("Initializing composition module...", processorManager);
+
+        // Iterate over processors and map each processor with its key to an array
+        const processorArray = Object.entries(processorManager.processors).map(([key, processor]) => ({
+            key,
+            processor,
+            mixer: processorManager.mixer[key],
+            compressors: processorManager.compressors[key],
+            prefetchedSamples: processorManager.prefetchedSamples[key],
+
+        }));
+
+        const curves = mixCurve.getNextFromWaveforms;
+
+        console.log("Mapped processors:", processorArray);
+        const getAct = () => ({ taktValue: 0, waveformValue: 0 });
+        // Set up a timer with a 40ms interval
+        setInterval(() => {
+
+            let result = getAct();
+            // Get all mixer keys
+            const mixerKeys = Object.keys(processorManager.mixer);
+            // Pick a random key
+            const randomKey = mixerKeys[Math.floor(Math.random() * mixerKeys.length)];
+            // Set a random gain value between 0 and 1
+            const mixerNode = processorManager.mixer[randomKey];
+            if (mixerNode) {
+                mixerNode.gain.value = Math.random();
+            }
+        }, 250);
+    },
     arrangement: {
         // The `equal` function takes two WorkBuffers and makes them equal in length.
         equal: (s1, s2) => {
@@ -126,12 +144,12 @@ export default {
 
                     let k2 = 1;
                     if (howManyTimesFit > 2) {
-                        k2 = curve.getNext().taktValue ;
+                        k2 = curve.getNext().taktValue;
 
                     }
 
 
-                    for (let k = 0; k < smallerLen; k+=k2){
+                    for (let k = 0; k < smallerLen; k += k2) {
                         const index = i * smallerLen + k;
                         if (index + offset < longerLen) {
                             const val = smaller.channelData[j][k] ?? 0;
