@@ -139,6 +139,7 @@ for (let i = 1; i <= PROCESSOR_COUNT; i++) {
         constructor() {
             super();
             this.processorId = processorName;
+            this.procId = processorName; // Pass processorId to process.js
         }
     });
 }
