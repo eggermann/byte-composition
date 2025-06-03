@@ -1,5 +1,6 @@
 import { WorkBuffer } from './audio/WorkBuffer.js';
 import { getLogScaledFitCount } from './core/utilities.js';
+import { applyCorrections } from './audio/analyzer.js';
 import tm from 'taktmuster';
 
 
@@ -41,16 +42,50 @@ export default {
             let result = getAct();
             // Get all mixer keys
             const mixerKeys = Object.keys(processorManager.mixer);
-            mixerKeys.forEach(key => {
-                const mixerNode = processorManager.mixer[key];
-                if (mixerNode) {
-                    const curveVal = curves[Math.floor(Math.random() * curves.length)]();
-                   
-                    console.log(`Processing mixer ${key} with curve value:`, curveVal);
-                    mixerNode.gain.value = (curveVal.waveformValue + 1) / 2;
-                    console.log(`Mixer ${key} gain set to: ${mixerNode.gain.value}, curve value: ${curveVal}`);
+
+
+
+            const now = processorManager.audioContext.currentTime;
+            const PROCESSOR_COUNT = processorArray.length;
+
+            processorArray.forEach(({ key, processor, mixer, compressors }) => {
+                // Assume you have a way to get peak and rms for each processor
+                const peak = processor.getPeak ? processor.getPeak() : 0.5;
+                const rms = processor.getRMS ? processor.getRMS() : 0.5;
+
+                const gainNode = mixer;
+                const compressor = compressors;
+
+                // Adaptive compression
+                if (compressor && compressor.threshold) {
+                    compressor.threshold.setTargetAtTime(
+                        Math.min(-18, -18 * (peak / 0.9)),
+                        now,
+                        0.1
+                    );
+                }
+
+                let curveVal = curves[Math.floor(Math.random() * curves.length)]();
+
+            //    console.log(`Processing mixer ${key} with curve value:`, curveVal);
+                curveVal = (curveVal.waveformValue + 1) / 2;
+
+
+                // Gain staging
+                const targetGain = Math.min(
+                    curveVal / (rms * PROCESSOR_COUNT),
+                    curveVal / peak
+                );
+
+                if (gainNode && gainNode.gain) {
+                    gainNode.gain.setTargetAtTime(
+                        Math.min(targetGain, 1),
+                        now,
+                        peak > 0.9 ? 0.01 : 0.1
+                    );
                 }
             });
+
             // Pick a random key
             const randomKey = mixerKeys[Math.floor(Math.random() * mixerKeys.length)];
             // Set a random gain value between 0 and 1
