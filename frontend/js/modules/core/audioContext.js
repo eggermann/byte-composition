@@ -8,11 +8,16 @@ class AudioContextManager {
     constructor() {
         console.log("Initializing AudioContextManager...");
 
-        // Use the browser‑native AudioContext so we can pass it to AudioWorkletNode
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-        console.log("AudioContext state after initialization:", this.audioContext);
-        console.log("AudioContext state after initialization:", this.audioContext.state);
+        if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
+            // Use the browser‑native AudioContext so we can pass it to AudioWorkletNode
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            console.log("AudioContext state after initialization:", this.audioContext);
+            console.log("AudioContext state after initialization:", this.audioContext.state);
+        } else {
+            // Not in a browser environment, skip initialization
+            this.audioContext = null;
+            console.warn("AudioContext not initialized: window is undefined or AudioContext is unavailable.");
+        }
 
         this.isInitialized = false;
         this.isPlaying = false;

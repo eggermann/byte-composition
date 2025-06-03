@@ -1,6 +1,7 @@
 import { WorkBuffer } from './audio/WorkBuffer.js';
 import { getLogScaledFitCount } from './core/utilities.js';
 import { applyCorrections } from './audio/analyzer.js';
+import audioContext from './core/audioContext.js';
 import tm from 'taktmuster';
 
 
@@ -45,7 +46,7 @@ export default {
 
 
 
-            const now = processorManager.audioContext.currentTime;
+            const now = audioContext.getContext().currentTime;
             const PROCESSOR_COUNT = processorArray.length;
 
             processorArray.forEach(({ key, processor, mixer, compressors }) => {
@@ -78,11 +79,15 @@ export default {
                 );
 
                 if (gainNode && gainNode.gain) {
-                    gainNode.gain.setTargetAtTime(
-                        Math.min(targetGain, 1),
-                        now,
-                        peak > 0.9 ? 0.01 : 0.1
-                    );
+                    if (typeof gainNode.gain.setTargetAtTime === 'function') {
+                        gainNode.gain.setTargetAtTime(
+                            Math.min(targetGain, 1),
+                            now,
+                            peak > 0.9 ? 0.01 : 0.1
+                        );
+                    } else {
+                        gainNode.gain.value = Math.min(targetGain, 1);
+                    }
                 }
             });
 

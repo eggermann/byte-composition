@@ -236,8 +236,6 @@ export function process(inputs, outputs, parameters) {
                     const d = this.pos % (buffer1Length * pitch);
                     output[channel][i] = applyInterpolation(this, channel, d, output[channel][i]);
 
-
-
                 } catch (err) {
                     const timeSinceLastLog = now - this._lastLogTime;
                     if (timeSinceLastLog > this._logInterval) {

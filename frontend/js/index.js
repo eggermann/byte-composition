@@ -112,7 +112,7 @@ function startAnalysisInterval() {
 
         // Start the analysis chain
         analyzeChannels(mixer);
-        applyCorrections(mixer, compressors, audioContext.getContext(), processorManager.PROCESSOR_COUNT);
+       // applyCorrections(mixer, compressors, audioContext.getContext(), processorManager.PROCESSOR_COUNT);
     };
     
     // Start the loop
