@@ -75,22 +75,29 @@ this.isPlaying = true
                     const sample1 = this.freshBuffers.shift();
                     const sample2 = this.freshBuffers.shift();
 
-                    event.data.arrangementType = 'random'
-                    let c;
-                    if (event.data.arrangementType === 'repeat') {
-                        c = composition.arrangement.repeat(sample1, sample2, event.data.justifyContent);
-                    } else if (event.data.arrangementType === 'random') {
-                        c = composition.arrangement.random(sample1, sample2);
-                    } else {
-                        c = composition.arrangement.equal(sample1, sample2);
-                    }
+                    // Offload arrangement to an asynchronous function
+                    (async () => {
+                        const startTime = currentTime; // Start profiling
+                        event.data.arrangementType = 'random';
+                        let c;
+                        if (event.data.arrangementType === 'repeat') {
+                            c = await composition.arrangement.repeat(sample1, sample2, event.data.justifyContent);
+                        } else if (event.data.arrangementType === 'random') {
+                            c = await composition.arrangement.random(sample1, sample2);
+                        } else {
+                            c = await composition.arrangement.equal(sample1, sample2);
+                        }
 
-                    console.log('-->after arrange', c.s1.getLength(), c.s2.getLength());
+                        const endTime = currentTime; // End profiling
+                        console.log(`Arrangement completed in ${endTime - startTime} ms`);
 
-                    this.workBuffer[0] = c.s1;
-                    this.workBuffer[1] = c.s2;
-                    this.hasRefreshed = false
-                    this.newSample = true;
+                        console.log('-->after arrange', c.s1.getLength(), c.s2.getLength());
+
+                        this.workBuffer[0] = c.s1;
+                        this.workBuffer[1] = c.s2;
+                        this.hasRefreshed = false;
+                        this.newSample = true;
+                    })();
                 }
 
                 console.log('Sample loaded into freshBuffers', {

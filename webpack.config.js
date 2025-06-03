@@ -3,6 +3,30 @@ const commitHash = require('child_process').execSync('git rev-parse --short HEAD
 const path = require('path');
 const webpack = require('webpack');
 const dotenv = require('dotenv');
+const fs = require('fs');
+
+// Custom plugin to write commit-hash.config.json after build
+class WriteCommitConfigPlugin {
+  apply(compiler) {
+    compiler.hooks.afterEmit.tap('WriteCommitConfigPlugin', (compilation) => {
+      try {
+        const commitHash = require('child_process').execSync('git rev-parse --short HEAD').toString().trim();
+        const commitMessage = require('child_process').execSync('git log -1 --pretty=%B').toString().trim();
+        const outDir = path.resolve(__dirname, 'deploy', commitHash);
+        const configPath = path.join(outDir, `${commitHash}.config.json`);
+        const config = {
+          description: commitMessage,
+          title: commitHash
+        };
+        fs.mkdirSync(outDir, { recursive: true });
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+        console.log(`Wrote ${configPath}`);
+      } catch (err) {
+        console.error('Failed to write commit config:', err);
+      }
+    });
+  }
+}
 
 // Load environment variables based on NODE_ENV
 const env = process.env.NODE_ENV || 'development';
@@ -78,6 +102,7 @@ module.exports = {
         FRONTEND_BASE_URL: envConfig?.FRONTEND_BASE_URL || 'http://localhost:9001'
       })
     }),
+  new WriteCommitConfigPlugin(),
   ],
   devServer: {
     historyApiFallback: true,

@@ -204,7 +204,7 @@ export function process(inputs, outputs, parameters) {
         const floatArray = new Float32Array(128);
         const output = outputs[0];
         const outputChannel = output[0];
-        const step =1;// 2 * 3;
+        const step =2;// 2 * 3;
 
         const buffer1Length = this.workBuffer[0].getLength();
         const buffer2Length = this.workBuffer[1].getLength();

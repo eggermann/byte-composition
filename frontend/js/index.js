@@ -8,7 +8,6 @@ import Ab5Sample from "../samples/Ab5.mp3";
 import freeSoundClient from "./modules/freesound-client.js";
 import bufferHelpers from "./modules/audio/prepareAudioBuffer.js";
 import { initSpectroVisualizer3D } from "./modules/spectroVisualizer/spectroVisualizer-exp.js";
-import {process} from './modules/composition.js';
 import '../styles.css';
 
 // Import core modules

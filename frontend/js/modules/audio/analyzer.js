@@ -45,7 +45,11 @@ export function analyzeChannels(mixer, bufferHelpers) {
  * @param {Number} PROCESSOR_COUNT - The total number of processors in the system.
  */
 export function applyCorrections(mixer, compressors, audioContext, PROCESSOR_COUNT) {
+   return;
+   
     const now = audioContext.currentTime;
+
+
 
     analysisData.forEach(({ rms, peak }, procId) => {
         if (!mixer[procId] || !compressors[procId]) return;

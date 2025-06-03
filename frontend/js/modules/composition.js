@@ -41,6 +41,16 @@ export default {
             let result = getAct();
             // Get all mixer keys
             const mixerKeys = Object.keys(processorManager.mixer);
+            mixerKeys.forEach(key => {
+                const mixerNode = processorManager.mixer[key];
+                if (mixerNode) {
+                    const curveVal = curves[Math.floor(Math.random() * curves.length)]();
+                   
+                    console.log(`Processing mixer ${key} with curve value:`, curveVal);
+                    mixerNode.gain.value = (curveVal.waveformValue + 1) / 2;
+                    console.log(`Mixer ${key} gain set to: ${mixerNode.gain.value}, curve value: ${curveVal}`);
+                }
+            });
             // Pick a random key
             const randomKey = mixerKeys[Math.floor(Math.random() * mixerKeys.length)];
             // Set a random gain value between 0 and 1
