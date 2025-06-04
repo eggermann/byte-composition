@@ -11,12 +11,12 @@ import { initSpectroVisualizer3D } from "./modules/spectroVisualizer/spectroVisu
 import '../styles.css';
 
 // Import core modules
-import audioContext from './modules/core/audioContext';
-import processorManager from './modules/core/processorManager';
-import sampleManager from './modules/core/sampleManager';
-import uiController from './modules/core/uiController';
-import composition from './modules/composition';
-import { analyzeChannels, applyCorrections } from './modules/core/analyzer';
+import audioContext from './modules/core/audioContext.js';
+import processorManager from './modules/core/processorManager.js';
+import sampleManager from './modules/core/sampleManager.js';
+import uiController from './modules/core/uiController.js';
+import composition from './modules/composition.js';
+import { analyzeChannels, applyCorrections } from './modules/core/analyzer.js';
 
 // Initialize core dependencies
 sampleManager.initialize(bufferHelpers);
@@ -81,6 +81,7 @@ async function initializeAudio() {
         throw err;
     }
 }
+
 
 // Start the analysis loop
 function startAnalysisInterval() {
