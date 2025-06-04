@@ -35,6 +35,8 @@ const envConfig = dotenv.config({ path: envFile }).parsed || {};
 
 console.log(`Using ${envFile} configuration...`);
 console.log('Environment config loaded:', envConfig);
+console.log('DEV SERVER commitHash:', commitHash);
+const deployBase = envConfig?.DEPLOY_BASE || 'deploy';   // allows overriding the public path folder
 
 // Create a new object with stringified values
 const envKeys = Object.keys(envConfig || {}).reduce((prev, next) => {
@@ -64,11 +66,14 @@ module.exports = {
     },
   },
   output: {
-    // Dynamically set publicPath to match the commit hash folder
-    publicPath:  env === 'production' ? `/deploy/${commitHash}/`:'',
+    // Use relative script paths in production so the bundle works from any folder
+    publicPath:  env === 'production' ? './' : '/',
     // Dynamically generate output folder based on Git commit hash
-    path: path.resolve(__dirname, 'deploy', commitHash),
+    path: env === 'production'
+      ? path.resolve(__dirname, deployBase, commitHash)
+      : path.resolve(__dirname, 'deploy', 'dev'),
     filename: env === 'production' ? '[name].[contenthash].js' : '[name].js',
+    chunkFilename: env === 'production' ? '[name].[contenthash].js' : '[name].js',
     globalObject: 'self',
     clean: true
   },
@@ -105,12 +110,7 @@ module.exports = {
   new WriteCommitConfigPlugin(),
   ],
   devServer: {
-    historyApiFallback: true,
-    static: {
-      directory: path.join(__dirname, 'dist'),
-      publicPath: '/',
-      serveIndex: true
-    },
+    historyApiFallback: { index: '/index.html' },
     watchFiles: {
       paths: ['frontend/**/*'],
       options: {
@@ -122,8 +122,9 @@ module.exports = {
     open: true,
     compress: true,
     devMiddleware: {
+      index: 'index.html',
       publicPath: '/',
-      writeToDisk: false
+      writeToDisk: true         // keep writing assets for inspection
     },
     client: {
       overlay: {
