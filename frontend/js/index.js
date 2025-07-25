@@ -36,7 +36,7 @@ async function initializeAudio() {
         // Create main "master" gain and analyzer
         const masterGain = audioContext.getContext().createGain();
         masterGain.gain.value = 1.0;
-        
+
         const masterAnalyser = audioContext.getContext().createAnalyser();
         masterAnalyser.fftSize = 2048;
 
@@ -44,7 +44,7 @@ async function initializeAudio() {
         processorManager.getProcessorIds().forEach(procId => {
             const components = processorManager.setupProcessor(procId);
             processorManager.connectProcessor(procId, masterGain);
-            processorManager.setupMessageHandler(procId, (procId) => 
+            processorManager.setupMessageHandler(procId, (procId) =>
                 sampleManager.deliverSamplesToProcessor(procId)
             );
         });
@@ -60,10 +60,10 @@ async function initializeAudio() {
         };
 
         // Initialize visualizer
-        initSpectroVisualizer3D(masterAnalyser, { 
-            width: 600, 
-            height: 256, 
-            enabled: true 
+        initSpectroVisualizer3D(masterAnalyser, {
+            width: 600,
+            height: 256,
+            enabled: true
         });
 
         // Start periodic tasks
@@ -91,11 +91,11 @@ function startAnalysisInterval() {
     }
 
     console.log('Starting analysis loop');
-    
+
     const analyzeLoop = () => {
         const mixer = processorManager.getMixer();
         const compressors = processorManager.getCompressors();
-        
+
         if (!mixer) {
             console.warn('No mixer available for analysis');
             return;
@@ -112,9 +112,9 @@ function startAnalysisInterval() {
 
         // Start the analysis chain
         analyzeChannels(mixer);
-       // applyCorrections(mixer, compressors, audioContext.getContext(), processorManager.PROCESSOR_COUNT);
+        // applyCorrections(mixer, compressors, audioContext.getContext(), processorManager.PROCESSOR_COUNT);
     };
-    
+
     // Start the loop
     analyzeLoop();
 }
@@ -143,7 +143,9 @@ uiController.onButtonClick(async () => {
     if (!audioContext.getState().isInitialized) {
         await initializeAudio();
     }
+    
     if (audioContext.getState().isInitialized) {
+        await togglePlayback();
         await togglePlayback();
     } else {
         console.error("Initialization failed. Cannot toggle playback.");
