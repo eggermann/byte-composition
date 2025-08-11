@@ -1,3 +1,8 @@
+// Check AudioWorklet support in Firefox
+if (!('audioWorklet' in (window.AudioContext || window.webkitAudioContext).prototype)) {
+  alert('AudioWorklet is not supported in this browser. Sound will not work.');
+  console.warn('AudioWorklet is not supported in this browser.');
+}
 /**
  * @file index.js
  * @description Main entry point for the ByteComposition application
@@ -140,14 +145,35 @@ async function togglePlayback() {
 
 // Set up click handler
 uiController.onButtonClick(async () => {
-    if (!audioContext.getState().isInitialized) {
-        await initializeAudio();
-    }
-    
-    if (audioContext.getState().isInitialized) {
-        await togglePlayback();
-        await togglePlayback();
-    } else {
-        console.error("Initialization failed. Cannot toggle playback.");
+    try {
+        if (!audioContext.getState().isInitialized) {
+            await initializeAudio();
+        }
+
+        // Always resume context on user gesture
+        if (audioContext.getContext().state === 'suspended') {
+            await audioContext.resume();
+        }
+
+        // Ensure at least one sample is loaded before starting
+        if (!processorManager.processors['proc1']?._started) {
+            await sampleManager.loadInitialSamples(Ab5Sample);
+        }
+
+        // Start playback if not already running
+        if (audioContext.getContext().state !== 'running') {
+            await audioContext.resume();
+        }
+
+        // Optionally, toggle playback (pause/resume) on repeated clicks
+        // Uncomment below if you want play/pause toggle:
+        // else {
+        //     await audioContext.suspend();
+        // }
+    } catch (err) {
+        console.error("Play handling error:", err);
+        uiController.setError();
+    } finally {
+        uiController.resetError();
     }
 });
