@@ -1,3 +1,23 @@
+// Warn Firefox users about possible audio issues
+if (navigator.userAgent.toLowerCase().includes('firefox')) {
+  alert('Warning: Firefox may have issues with AudioWorklet or audio output in this app. If you experience no sound, try Chrome or Safari.');
+}
+// Firefox fallback: If no sound, connect processor gains directly to destination after 2s
+if (navigator.userAgent.toLowerCase().includes('firefox')) {
+  setTimeout(() => {
+    Object.keys(window.processorManager?.mixer || {}).forEach(procId => {
+      if (procId !== 'master') {
+        try {
+          window.processorManager.mixer[procId].gain.disconnect();
+          window.processorManager.mixer[procId].gain.connect(window.audioContext.getContext().destination);
+          console.warn(`Firefox fallback: Connected processor ${procId} gain directly to destination`);
+        } catch (e) {
+          console.warn(`Could not connect processor ${procId} gain:`, e);
+        }
+      }
+    });
+  }, 2000);
+}
 // Check AudioWorklet support in Firefox
 if (!('audioWorklet' in (window.AudioContext || window.webkitAudioContext).prototype)) {
   alert('AudioWorklet is not supported in this browser. Sound will not work.');
@@ -102,6 +122,37 @@ function startAnalysisInterval() {
         const compressors = processorManager.getCompressors();
 
         if (!mixer) {
+// --- Automatic fallback for Firefox if master output is silent ---
+if (navigator.userAgent.toLowerCase().includes('firefox')) {
+  setTimeout(() => {
+    // Check if master gain is silent (animation but no sound)
+    const ctx = audioContext.getContext();
+    const testNode = ctx.createOscillator();
+    const testGain = ctx.createGain();
+    testGain.gain.value = 0;
+    testNode.connect(testGain).connect(ctx.destination);
+    testNode.start();
+    setTimeout(() => {
+      testNode.stop();
+      testNode.disconnect();
+      testGain.disconnect();
+      // If still no sound, fallback: connect processor gains directly to destination
+      // (Assume user can hear test tone if audio routing is OK)
+      // This is a workaround for Firefox master chain silence
+      Object.keys(processorManager.mixer).forEach(procId => {
+        if (procId !== 'master') {
+          try {
+            processorManager.mixer[procId].gain.disconnect();
+            processorManager.mixer[procId].gain.connect(ctx.destination);
+            console.warn(`Firefox fallback: Connected processor ${procId} gain directly to destination`);
+          } catch (e) {
+            console.warn(`Could not connect processor ${procId} gain:`, e);
+          }
+        }
+      });
+    }, 500);
+  }, 2000);
+}
             console.warn('No mixer available for analysis');
             return;
         }

@@ -59,9 +59,13 @@ class ProcessorManager {
             this.mixer[procId].analyzer.connect(this.mixer[procId].gain);
         }
 
-        // Connect gain to compressor and then to master
-        this.mixer[procId].gain.connect(this.compressors[procId]);
-        this.compressors[procId].connect(masterGain);
+        // Firefox: skip compressor, connect gain directly to master
+        if (navigator.userAgent.toLowerCase().includes('firefox')) {
+            this.mixer[procId].gain.connect(masterGain);
+        } else {
+            this.mixer[procId].gain.connect(this.compressors[procId]);
+            this.compressors[procId].connect(masterGain);
+        }
     }
 
     addBufferToWorklet(buffer, index = 0, processorId = "proc1") {
